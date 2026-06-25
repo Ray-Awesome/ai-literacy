@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>회원가입 — AILIT</title>
+<meta name="description" content="이메일과 비밀번호로 AILIT에 가입하세요. 만 14세 미만은 보호자 동의가 필요합니다.">
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var t=localStorage.getItem('ailit-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="progress-bar"></div>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <nav class="nav-links">
+      <a href="elementary/index.html">초등</a>
+      <a href="middle/index.html">중등</a>
+      <a href="high/index.html">고등</a>
+      <a href="teacher/index.html">교사 허브</a>
+      <a href="login.html" class="nav-cta">로그인</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu">
+    <a href="elementary/index.html">초등</a>
+    <a href="middle/index.html">중등</a>
+    <a href="high/index.html">고등</a>
+    <a href="teacher/index.html">교사 허브</a>
+    <a href="login.html" class="nav-cta">로그인</a>
+  </nav>
+</header>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-title">회원가입</div>
+    <div class="auth-desc">이메일과 비밀번호만으로 가입할 수 있습니다.</div>
+
+    <div id="formError" class="form-error" style="display:none;"></div>
+
+    <form id="signupForm" novalidate>
+      <div class="form-field">
+        <label for="email">이메일</label>
+        <input type="email" id="email" name="email" autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-field">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" placeholder="8자 이상" required>
+        <div class="form-hint">8자 이상 입력하세요.</div>
+      </div>
+      <div class="form-field">
+        <label for="password2">비밀번호 확인</label>
+        <input type="password" id="password2" name="password2" autocomplete="new-password" placeholder="비밀번호를 다시 입력" required>
+      </div>
+      <div class="form-field">
+        <label for="birthDate">생년월일</label>
+        <input type="date" id="birthDate" name="birthDate" required>
+        <div class="form-hint">나이 확인용입니다. 만 14세 미만은 보호자 동의가 필요합니다.</div>
+      </div>
+
+      <!-- 만 14세 미만일 때만 표시 -->
+      <div id="guardianBox" class="guardian-box" style="display:none;">
+        <h4>👨‍👩‍👧 보호자(법정대리인) 동의</h4>
+        <div class="form-field">
+          <label for="guardianName">보호자 이름</label>
+          <input type="text" id="guardianName" placeholder="보호자 성함">
+        </div>
+        <div class="form-field">
+          <label for="guardianRelation">관계</label>
+          <select id="guardianRelation">
+            <option value="부">부(아버지)</option>
+            <option value="모">모(어머니)</option>
+            <option value="법정후견인">법정후견인</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="guardianContact">보호자 연락처</label>
+          <input type="text" id="guardianContact" placeholder="보호자 이메일 또는 전화번호">
+        </div>
+        <label class="form-check">
+          <input type="checkbox" id="guardianConsent">
+          <span>저는 위 아동의 보호자(법정대리인)이며, 자녀의 회원가입과 개인정보 수집·이용에 동의합니다.</span>
+        </label>
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--gray-border);margin:20px 0;">
+
+      <label class="form-check">
+        <input type="checkbox" id="agreeTerms">
+        <span><a href="terms.html" target="_blank">이용약관</a>에 동의합니다. (필수)</span>
+      </label>
+      <label class="form-check" style="margin-bottom:20px;">
+        <input type="checkbox" id="agreePrivacy">
+        <span><a href="privacy.html" target="_blank">개인정보 수집·이용</a>에 동의합니다. (필수)</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">가입하기</button>
+    </form>
+
+    <div class="auth-alt">이미 회원이신가요? <a href="login.html">로그인</a></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="index.html" style="color:#64748B;">← 홈으로</a></span></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var form = document.getElementById('signupForm');
+  var errBox = document.getElementById('formError');
+  var birth = document.getElementById('birthDate');
+  var gbox = document.getElementById('guardianBox');
+
+  function ageFrom(d) {
+    if (!d) return null;
+    var b = new Date(d); if (isNaN(b)) return null;
+    var n = new Date(), a = n.getFullYear() - b.getFullYear();
+    var m = n.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+    return a;
+  }
+  function isMinor() { var a = ageFrom(birth.value); return a !== null && a < 14; }
+  function refreshGuardian() { gbox.style.display = isMinor() ? 'block' : 'none'; }
+  birth.addEventListener('change', refreshGuardian);
+
+  function showErr(msg) { errBox.textContent = msg; errBox.style.display = 'block'; window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errBox.style.display = 'none';
+    var email = document.getElementById('email').value.trim();
+    var pw = document.getElementById('password').value;
+    var pw2 = document.getElementById('password2').value;
+    if (pw.length < 8) return showErr('비밀번호는 8자 이상이어야 합니다.');
+    if (pw !== pw2) return showErr('비밀번호 확인이 일치하지 않습니다.');
+    if (!document.getElementById('agreeTerms').checked || !document.getElementById('agreePrivacy').checked)
+      return showErr('이용약관과 개인정보 수집·이용에 동의해야 가입할 수 있습니다.');
+
+    var body = { email: email, password: pw, birthDate: birth.value, agreeTerms: true, agreePrivacy: true };
+    if (isMinor()) {
+      body.guardianName = document.getElementById('guardianName').value.trim();
+      body.guardianRelation = document.getElementById('guardianRelation').value;
+      body.guardianContact = document.getElementById('guardianContact').value.trim();
+      body.guardianConsent = document.getElementById('guardianConsent').checked;
+      if (!body.guardianName || !body.guardianContact) return showErr('보호자 이름과 연락처를 입력해 주세요.');
+      if (!body.guardianConsent) return showErr('보호자(법정대리인) 동의에 체크해 주세요.');
+    }
+
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = '가입 중...';
+    window.AilitAuth.signup(body).then(function () {
+      location.href = 'account.html';
+    }).catch(function (err) {
+      showErr(err.message); btn.disabled = false; btn.textContent = '가입하기';
+    });
+  });
+})();
+</script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

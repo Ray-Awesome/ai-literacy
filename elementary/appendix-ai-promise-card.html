@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>나의 AI 사용 약속 — ailit</title>
+  <meta name="description" content="초등학생이 자신의 AI 사용 약속을 직접 선택하고 문장으로 완성하는 온라인 활동입니다.">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="progress-bar"></div>
+  <header class="site-header">
+    <div class="nav-inner">
+      <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+      <nav class="nav-links"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+      <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+    </div>
+    <nav class="mobile-menu"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+  </header>
+
+  <section class="hero-sub-page" style="background:linear-gradient(135deg,#0D9488 0%,#1E3A6E 100%);">
+    <div class="container hero-content">
+      <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#CCFBF1;">부록 04</span>
+      <h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">나의 AI 사용 약속</h1>
+      <p class="hero-sub" style="font-size:16px;">AI를 사용할 때 내가 지킬 원칙을 직접 고르고 문장으로 완성합니다.</p>
+    </div>
+  </section>
+
+  <style>
+    .promise-panel{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:24px;box-shadow:0 14px 40px rgba(15,23,42,.08)}
+    .promise-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:24px}
+    .promise-btn{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:16px;text-align:left;cursor:pointer;min-height:120px}
+    .promise-btn strong{display:block;color:var(--dark);margin-bottom:8px}
+    .promise-btn span{font-size:13px;color:var(--gray);line-height:1.7}
+    .promise-btn.selected{border-color:var(--teal);background:#CCFBF1}
+    .promise-form{display:grid;gap:14px;margin-top:24px}
+    .promise-form label{font-size:14px;font-weight:900;color:var(--dark)}
+    .promise-form input,.promise-form select{width:100%;margin-top:8px;border:1px solid #CBD5E1;border-radius:8px;padding:12px 14px;font:inherit}
+    .promise-card{margin-top:24px;border-radius:8px;border:1px solid #99F6E4;background:#ECFDF5;padding:22px;color:var(--dark);line-height:1.8}
+    .promise-card strong{font-size:18px;color:#115E59}
+    .scenario{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:18px;font-size:17px;line-height:1.7;color:var(--dark);font-weight:800}
+    .scenario-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+    .scenario-options button{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:13px;font-weight:900;cursor:pointer}
+    .scenario-options button.correct{border-color:var(--teal);background:#CCFBF1;color:#115E59}
+    .scenario-options button.wrong{border-color:#FDBA74;background:#FFF7ED;color:#9A3412}
+    .feedback{margin-top:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;font-size:14px;line-height:1.8;color:var(--gray)}
+    @media(max-width:760px){.promise-grid,.scenario-options{grid-template-columns:1fr}}
+  </style>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">1단계</div>
+        <h2 class="section-title">내가 중요하게 지킬<br>원칙을 고르세요.</h2>
+        <p class="section-sub wide">모든 약속을 한꺼번에 잘 지키기는 어렵습니다. 오늘 가장 중요하다고 생각하는 약속 3개를 골라 봅니다.</p>
+      </div>
+      <div class="promise-panel fade-up" style="margin-top:28px;">
+        <div class="promise-grid" id="promiseGrid"></div>
+        <div class="feedback" id="promiseCount">약속 3개를 골라 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-light">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">2단계</div>
+        <h2 class="section-title">상황을 보고<br>알맞은 행동을 고르세요.</h2>
+        <p class="section-sub wide">약속은 실제 상황에서 쓸 수 있어야 합니다. 아래 상황에서 더 안전한 행동을 골라 봅니다.</p>
+      </div>
+      <div class="promise-panel fade-up" style="margin-top:28px;">
+        <div class="scenario" id="scenarioText">상황을 불러오는 중입니다.</div>
+        <div class="scenario-options" id="scenarioOptions"></div>
+        <div class="feedback" id="scenarioFeedback">더 안전한 행동을 골라 보세요.</div>
+        <button class="btn btn-primary" type="button" id="nextScenario" style="margin-top:16px;">다음 상황</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">3단계</div>
+        <h2 class="section-title">나의 약속 문장을<br>완성하세요.</h2>
+        <p class="section-sub wide">마지막으로 내가 실제로 지킬 수 있는 문장으로 바꿉니다. 너무 멋진 말보다 내가 행동할 수 있는 말이 좋습니다.</p>
+      </div>
+      <div class="promise-panel fade-up" style="margin-top:28px;">
+        <div class="promise-form">
+          <label>내 이름 또는 별명<input id="nameInput" placeholder="예: 도윤"></label>
+          <label>AI를 사용할 때 가장 먼저 할 행동
+            <select id="firstAction">
+              <option>답을 바로 믿지 않고 확인하겠습니다</option>
+              <option>개인정보를 넣지 않겠습니다</option>
+              <option>친구를 평가하거나 놀리는 데 쓰지 않겠습니다</option>
+              <option>어려운 내용은 어른에게 물어보겠습니다</option>
+            </select>
+          </label>
+          <label>내가 특히 조심할 상황<input id="careInput" placeholder="예: 숙제를 할 때, 친구 사진을 쓸 때"></label>
+          <button class="btn btn-primary" type="button" id="makePromise">나의 약속 만들기</button>
+          <div class="promise-card" id="promiseOutput"><strong>나의 AI 사용 약속</strong><br>칸을 채우면 내 약속 문장이 만들어집니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-sm bg-light">
+    <div class="container" style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="appendix-privacy-hide.html" class="btn btn-outline">← 이전</a>
+      <a href="index.html" class="btn btn-primary">초등 코스</a>
+    </div>
+  </section>
+
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-bottom"><span>© 2026 ailit. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">홈으로</a></span></div></div></footer>
+  <script>
+    const promises = [
+      { title: '멈추기', desc: 'AI 답변을 바로 믿지 않고 한 번 확인합니다.' },
+      { title: '가리기', desc: '이름, 학교, 주소, 얼굴 같은 개인정보를 넣지 않습니다.' },
+      { title: '바꾸기', desc: '친구를 평가하는 질문은 도와주는 질문으로 바꿉니다.' },
+      { title: '묻기', desc: '건강, 안전, 돈과 관련된 말은 어른에게 먼저 묻습니다.' },
+      { title: '밝히기', desc: 'AI의 도움을 받았을 때는 필요한 경우 솔직히 말합니다.' },
+      { title: '내 말로 쓰기', desc: 'AI 답변을 그대로 베끼지 않고 내 생각으로 고칩니다.' }
+    ];
+    const promiseGrid = document.getElementById('promiseGrid');
+    promises.forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'promise-btn';
+      button.innerHTML = `<strong>${item.title}</strong><span>${item.desc}</span>`;
+      button.addEventListener('click', () => {
+        button.classList.toggle('selected');
+        const selected = document.querySelectorAll('.promise-btn.selected').length;
+        document.getElementById('promiseCount').textContent = selected === 3 ? '좋아요. 지킬 약속 3개를 골랐습니다.' : `지금 ${selected}개를 골랐습니다. 3개를 골라 보세요.`;
+      });
+      promiseGrid.appendChild(button);
+    });
+
+    const scenarios = [
+      { text: '친구 사진으로 재미있는 AI 그림을 만들고 싶습니다.', options: ['친구에게 먼저 허락을 받는다', '말하지 않고 만든 뒤 보여 준다'], answer: 0 },
+      { text: 'AI가 숙제 답을 한 번에 써 주었습니다.', options: ['그대로 낸다', '내용을 확인하고 내 말로 다시 쓴다'], answer: 1 },
+      { text: 'AI가 약을 추천해 주었습니다.', options: ['보호자나 보건 선생님에게 묻는다', '바로 따라 한다'], answer: 0 }
+    ];
+    let scenarioIndex = 0;
+    function renderScenario() {
+      const item = scenarios[scenarioIndex];
+      document.getElementById('scenarioText').textContent = item.text;
+      const box = document.getElementById('scenarioOptions');
+      box.innerHTML = '';
+      document.getElementById('scenarioFeedback').textContent = '더 안전한 행동을 골라 보세요.';
+      item.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = option;
+        button.addEventListener('click', () => {
+          box.querySelectorAll('button').forEach((b) => b.classList.remove('correct', 'wrong'));
+          button.classList.add(index === item.answer ? 'correct' : 'wrong');
+          document.getElementById('scenarioFeedback').textContent = index === item.answer ? '맞아요. AI를 쓰기 전에 사람의 권리와 안전을 먼저 생각했습니다.' : '다시 생각해요. AI가 할 수 있어도 해도 되는 일인지 먼저 따져야 합니다.';
+        });
+        box.appendChild(button);
+      });
+    }
+    document.getElementById('nextScenario').addEventListener('click', () => {
+      scenarioIndex = (scenarioIndex + 1) % scenarios.length;
+      renderScenario();
+    });
+
+    document.getElementById('makePromise').addEventListener('click', () => {
+      const name = document.getElementById('nameInput').value.trim();
+      const action = document.getElementById('firstAction').value;
+      const care = document.getElementById('careInput').value.trim();
+      document.getElementById('promiseOutput').innerHTML = name && care
+        ? `<strong>${name}의 AI 사용 약속</strong><br>나는 AI를 사용할 때 ${action}. 특히 ${care}에는 더 조심하겠습니다. AI가 편리해도 내 판단과 책임을 잊지 않겠습니다.`
+        : '<strong>나의 AI 사용 약속</strong><br>이름 또는 별명과 조심할 상황을 적어 주세요.';
+    });
+    renderScenario();
+  </script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

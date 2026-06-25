@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내 계정 — AILIT</title>
+<meta name="description" content="내 계정과 내가 남긴 답변을 확인하세요.">
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var t=localStorage.getItem('ailit-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="progress-bar"></div>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <nav class="nav-links">
+      <a href="elementary/index.html">초등</a>
+      <a href="middle/index.html">중등</a>
+      <a href="high/index.html">고등</a>
+      <a href="teacher/index.html">교사 허브</a>
+      <a href="login.html" class="nav-cta">로그인</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu">
+    <a href="elementary/index.html">초등</a>
+    <a href="middle/index.html">중등</a>
+    <a href="high/index.html">고등</a>
+    <a href="teacher/index.html">교사 허브</a>
+    <a href="login.html" class="nav-cta">로그인</a>
+  </nav>
+</header>
+
+<section class="hero-sub-page">
+  <div class="container hero-content">
+    <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#DBEAFE;">내 계정</span>
+    <h1 class="hero-title" style="font-size:clamp(28px,5vw,42px);">내 학습 공간</h1>
+    <p class="hero-sub" style="font-size:15px;" id="welcome">불러오는 중...</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container" style="max-width:820px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <h2 class="section-title" style="font-size:22px;">내가 남긴 답변</h2>
+      <div style="display:flex;gap:10px;">
+        <a id="adminLink" href="admin.html" class="btn btn-outline btn-sm" style="display:none;">관리자 페이지</a>
+        <button id="logoutBtn" class="btn btn-outline btn-sm">로그아웃</button>
+      </div>
+    </div>
+    <div id="answerList" style="margin-top:20px;color:var(--gray);">불러오는 중...</div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="index.html" style="color:#64748B;">← 홈으로</a></span></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  window.AilitAuth.me().then(function (d) {
+    var u = d.user;
+    document.getElementById('welcome').textContent = u.email + ' 님, 환영합니다.' + (u.isMinor ? ' (보호자 동의 가입)' : '');
+    if (u.isAdmin) document.getElementById('adminLink').style.display = 'inline-flex';
+    return window.AilitAuth.getAnswers();
+  }).then(function (d) {
+    var list = document.getElementById('answerList');
+    var answers = d.answers || [];
+    if (!answers.length) {
+      list.innerHTML = '<div class="card">아직 저장한 답변이 없습니다. 학습 페이지에서 답변을 남기면 여기에 모입니다. <a href="high/project.html" style="color:var(--blue);font-weight:600;">고등 최종 프로젝트에서 해보기 →</a></div>';
+      return;
+    }
+    list.innerHTML = answers.map(function (a) {
+      return '<div class="card" style="margin-bottom:14px;">' +
+        '<div style="font-size:12px;color:var(--gray-light);margin-bottom:6px;">' + esc(a.updated_at) + (a.page_url ? ' · ' + esc(a.page_url) : '') + '</div>' +
+        (a.prompt ? '<div style="font-weight:700;color:var(--navy);margin-bottom:6px;">' + esc(a.prompt) + '</div>' : '') +
+        '<div style="white-space:pre-wrap;">' + esc(a.answer) + '</div></div>';
+    }).join('');
+  }).catch(function () {
+    location.href = 'login.html';
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', function () {
+    window.AilitAuth.logout().then(function () { location.href = 'index.html'; });
+  });
+})();
+</script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

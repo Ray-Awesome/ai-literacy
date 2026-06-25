@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>진짜/글쎄 판단 연습 — ailit</title>
+  <meta name="description" content="AI 답변을 보고 진짜인지, 글쎄인지, 더 확인해야 하는지 직접 선택하고 설명하는 초등 온라인 활동입니다.">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="progress-bar"></div>
+  <header class="site-header">
+    <div class="nav-inner">
+      <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+      <nav class="nav-links"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+      <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+    </div>
+    <nav class="mobile-menu"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+  </header>
+
+  <section class="hero-sub-page" style="background:linear-gradient(135deg,#0D9488 0%,#1E3A6E 100%);">
+    <div class="container hero-content">
+      <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#CCFBF1;">부록 01</span>
+      <h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">진짜/글쎄 판단 연습</h1>
+      <p class="hero-sub" style="font-size:16px;">AI가 한 말을 그대로 믿지 않고, 직접 선택하고, 이유를 쓰고, 확인할 방법까지 정하는 온라인 활동입니다.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">시작하기 전</div>
+        <h2 class="section-title">AI 답변을<br>한 번 멈춰 보기.</h2>
+        <p class="section-sub wide">AI가 그럴듯하게 말해도 바로 맞다고 생각하지 않습니다. 먼저 이상한 점이 있는지 살펴보고, 왜 그렇게 판단했는지 짧게 설명해 봅니다.</p>
+      </div>
+      <div class="notice-banner green fade-up" style="margin-top:28px;">
+        <span>먼저 해 보기</span>
+        <div><strong>아래 문장에서 조심해야 할 말을 찾아보세요.</strong> 이런 단서를 먼저 찾으면 AI 답변을 더 안전하게 판단할 수 있습니다.</div>
+      </div>
+      <div class="practice-panel fade-up" style="margin-top:24px;">
+        <strong>연습 문장</strong>
+        <p>“이 약을 먹으면 감기가 하루 만에 반드시 나아요.”</p>
+        <div class="quick-start" style="margin-top:16px;">
+          <button class="quick-check" type="button" data-check="wrong">감기</button>
+          <button class="quick-check" type="button" data-check="correct">반드시</button>
+          <button class="quick-check" type="button" data-check="wrong">하루 만에</button>
+          <button class="quick-check" type="button" data-check="wrong">약</button>
+        </div>
+        <div class="practice-output" id="quickCheckOutput" style="margin-top:14px;">가장 조심해야 할 표현을 하나 눌러 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-light">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">판단 선택지</div>
+        <h2 class="section-title">무엇을 눌러<br>판단할까요.</h2>
+      </div>
+      <div class="resource-grid fade-up" style="margin-top:32px;">
+        <div class="resource-card" style="border-top:4px solid var(--teal);">
+          <div class="resource-icon">진짜</div>
+          <div class="resource-title" style="color:var(--teal);">근거가 보일 때</div>
+          <div class="resource-desc">교과서, 선생님 설명, 믿을 만한 기관 자료로 확인할 수 있는 말입니다.</div>
+        </div>
+        <div class="resource-card" style="border-top:4px solid var(--orange);">
+          <div class="resource-icon">글쎄</div>
+          <div class="resource-title" style="color:var(--orange);">의심할 점이 있을 때</div>
+          <div class="resource-desc">출처가 없거나, 너무 단정적이거나, 숫자와 날짜가 이상해 보이는 말입니다.</div>
+        </div>
+        <div class="resource-card" style="border-top:4px solid var(--blue);">
+          <div class="resource-icon">확인</div>
+          <div class="resource-title" style="color:var(--blue);">혼자 판단하기 어려울 때</div>
+          <div class="resource-desc">어른에게 묻거나, 공식 자료를 찾아보거나, 친구와 이유를 비교해야 하는 말입니다.</div>
+        </div>
+      </div>
+      <div class="criteria-practice fade-up" style="margin-top:28px;">
+        <div class="practice-panel">
+          <strong>연습 문장</strong>
+          <p>“AI가 말했으니까 무조건 맞아요.”</p>
+          <div class="quiz-options" style="margin-top:16px;">
+            <button class="quiz-option criteria-choice" type="button" data-criteria="진짜">진짜</button>
+            <button class="quiz-option criteria-choice" type="button" data-criteria="글쎄">글쎄</button>
+            <button class="quiz-option criteria-choice" type="button" data-criteria="확인">확인</button>
+          </div>
+          <div class="practice-output" id="criteriaOutput">먼저 하나를 눌러 보세요.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">시연 활동</div>
+        <h2 class="section-title">AI 답변을 읽고<br>판단을 선택해요.</h2>
+        <p class="section-sub wide">아래 문제는 100개 이상 문제은행에서 무작위로 뽑힌 10개 예시입니다. 한 문장씩 읽고, 진짜·글쎄·확인 중 하나를 고른 뒤 해설을 확인해 보세요.</p>
+      </div>
+      <style>
+        .quiz-shell{margin-top:36px;background:#fff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 14px 40px rgba(15,23,42,.08);overflow:hidden}
+        .quiz-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;border-bottom:1px solid #E2E8F0;background:#F8FAFC}
+        .quiz-count{font-size:13px;font-weight:800;color:var(--teal)}
+        .quiz-score{font-size:13px;color:var(--gray);font-weight:700}
+        .quiz-progress{height:8px;background:#E2E8F0;overflow:hidden}
+        .quiz-progress span{display:block;height:100%;width:10%;background:linear-gradient(90deg,var(--teal),var(--blue));transition:width .25s ease}
+        .quiz-body{padding:28px}
+        .quiz-question-label{font-size:13px;font-weight:800;color:var(--gray);margin-bottom:10px}
+        .quiz-answer{font-size:clamp(21px,3vw,30px);font-weight:800;color:var(--dark);line-height:1.45;margin:0 0 24px}
+        .quiz-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+        .quiz-option{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:16px 14px;font-size:16px;font-weight:900;color:var(--dark);cursor:pointer;transition:all .15s ease}
+        .quiz-option:hover,.quiz-option:focus{border-color:var(--teal);outline:none;transform:translateY(-1px)}
+        .quiz-option.selected{border-color:var(--blue);background:#EFF6FF}
+        .quiz-option.correct{border-color:var(--teal);background:#CCFBF1;color:#115E59}
+        .quiz-option.wrong{border-color:#FDBA74;background:#FFF7ED;color:#9A3412}
+        .quiz-feedback{display:none;margin-top:22px;border-radius:8px;padding:20px;background:#F8FAFC;border:1px solid #E2E8F0}
+        .quiz-feedback.show{display:block}
+        .quiz-result{font-size:18px;font-weight:900;margin-bottom:8px}
+        .quiz-result.ok{color:var(--teal)}
+        .quiz-result.no{color:var(--orange)}
+        .quiz-explain{font-size:15px;line-height:1.8;color:var(--gray);margin:0}
+        .quiz-next-action{margin-top:12px;font-size:14px;line-height:1.7;color:var(--dark);font-weight:700}
+        .quiz-controls{display:flex;justify-content:space-between;gap:12px;margin-top:22px;flex-wrap:wrap}
+        .quiz-controls .btn{border:none}
+        .quiz-summary{display:none;margin-top:22px;padding:22px;border-radius:8px;background:#ECFDF5;border:1px solid #99F6E4}
+        .quiz-summary.show{display:block}
+        .quick-start{display:flex;gap:10px;flex-wrap:wrap}
+        .quick-check{border:1px solid #CBD5E1;background:#fff;color:var(--dark);border-radius:8px;padding:12px 14px;font-weight:800;cursor:pointer}
+        .quick-check.active{border-color:var(--teal);background:#CCFBF1;color:#115E59}
+        .practice-panel{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:22px;box-shadow:0 10px 30px rgba(15,23,42,.06)}
+        .practice-panel p{font-size:18px;line-height:1.7;color:var(--dark);margin:10px 0 0}
+        .practice-output{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:14px 16px;font-size:14px;line-height:1.7;color:var(--gray)}
+        .practice-form{display:grid;gap:14px;margin-top:24px}
+        .practice-label{font-size:14px;font-weight:900;color:var(--dark)}
+        .practice-input,.practice-select,.practice-textarea{width:100%;border:1px solid #CBD5E1;border-radius:8px;padding:12px 14px;font:inherit;color:var(--dark);background:#fff}
+        .practice-textarea{min-height:92px;resize:vertical;line-height:1.7}
+        .choice-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+        .choice-row label{border:1px solid #CBD5E1;border-radius:8px;padding:12px;background:#fff;font-weight:800;cursor:pointer}
+        .choice-row input{margin-right:6px}
+        .check-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:20px}
+        .check-grid label{background:#fff;border:1px solid #CBD5E1;border-radius:8px;padding:13px 14px;font-size:14px;font-weight:800;color:var(--dark)}
+        @media(max-width:720px){.quiz-head{align-items:flex-start;flex-direction:column}.quiz-body{padding:20px}.quiz-options{grid-template-columns:1fr}.quiz-controls{display:grid;grid-template-columns:1fr}.quiz-controls .btn{width:100%}}
+        @media(max-width:720px){.choice-row,.check-grid{grid-template-columns:1fr}}
+      </style>
+      <div class="quiz-shell fade-up" id="realMaybeQuiz">
+        <div class="quiz-head">
+          <div>
+            <div class="quiz-count" id="quizCount">문제 1 / 10</div>
+            <div class="quiz-score" id="quizScore">맞힌 문제 0개</div>
+          </div>
+          <div class="quiz-score">판단을 고르면 바로 해설이 나옵니다.</div>
+        </div>
+        <div class="quiz-progress" aria-hidden="true"><span id="quizProgress"></span></div>
+        <div class="quiz-body">
+          <div class="quiz-question-label">AI가 이렇게 답했다고 해요</div>
+          <p class="quiz-answer" id="quizQuestion"></p>
+          <div class="quiz-options" id="quizOptions" role="group" aria-label="판단 선택">
+            <button class="quiz-option" type="button" data-choice="진짜">진짜</button>
+            <button class="quiz-option" type="button" data-choice="글쎄">글쎄</button>
+            <button class="quiz-option" type="button" data-choice="확인">확인</button>
+          </div>
+          <div class="quiz-feedback" id="quizFeedback" aria-live="polite">
+            <div class="quiz-result" id="quizResult"></div>
+            <p class="quiz-explain" id="quizExplain"></p>
+            <div class="quiz-next-action" id="quizNextAction"></div>
+          </div>
+          <div class="quiz-summary" id="quizSummary"></div>
+          <div class="quiz-controls">
+            <button class="btn btn-outline" type="button" id="quizRestart">처음부터 다시 풀기</button>
+            <button class="btn btn-primary" type="button" id="quizNext" disabled>다음 문제</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-light">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">온라인 연습장</div>
+        <h2 class="section-title">내가 직접<br>판단 기록 남기기.</h2>
+        <p class="section-sub wide">퀴즈에서 헷갈렸던 문장 하나를 골라 적고, 어떤 단서 때문에 그렇게 판단했는지 남겨 봅니다. 이 기록은 페이지 안에서 바로 확인할 수 있습니다.</p>
+      </div>
+      <div class="practice-panel fade-up" style="margin-top:28px;">
+        <div class="practice-form">
+          <label>
+            <div class="practice-label">1. 내가 다시 살펴볼 AI 답변</div>
+            <textarea class="practice-textarea" id="noteSentence" placeholder="예: 이 약을 먹으면 감기가 하루 만에 반드시 나아요."></textarea>
+          </label>
+          <div>
+            <div class="practice-label">2. 내가 고른 판단</div>
+            <div class="choice-row">
+              <label><input type="radio" name="noteChoice" value="진짜">진짜</label>
+              <label><input type="radio" name="noteChoice" value="글쎄">글쎄</label>
+              <label><input type="radio" name="noteChoice" value="확인">확인</label>
+            </div>
+          </div>
+          <label>
+            <div class="practice-label">3. 그렇게 생각한 단서</div>
+            <select class="practice-select" id="noteClue">
+              <option value="">단서를 선택하세요</option>
+              <option>출처가 보이지 않음</option>
+              <option>숫자나 날짜가 이상함</option>
+              <option>개인정보를 요구함</option>
+              <option>건강·약·안전과 관련됨</option>
+              <option>친구를 평가하거나 상처 줄 수 있음</option>
+              <option>최신 정보라 다시 확인해야 함</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" type="button" id="saveNote">내 판단 기록 만들기</button>
+          <div class="practice-output" id="noteOutput">답변과 판단을 입력하면 나의 기록이 만들어집니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-sm bg-light">
+    <div class="container" style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="index.html" class="btn btn-outline">초등 코스</a>
+      <a href="appendix-ai-bingo.html" class="btn btn-primary">다음 →</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-bottom"><span>© 2026 ailit. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">홈으로</a></span></div>
+    </div>
+  </footer>
+  <script src="real-maybe-questions.js"></script>
+  <script>
+    const fallbackQuestions = [
+      {
+        text: '“물은 보통 100도에서 끓어요.”',
+        answer: '진짜',
+        explain: '과학 시간에 배운 내용이고 교과서에서도 확인할 수 있습니다.',
+        action: '다음 행동: 교과서의 물의 상태 변화 단원에서 확인합니다.'
+      }
+    ];
+
+    function pickRandomQuestions(count) {
+      const source = Array.isArray(window.realMaybeQuestionsBank) && window.realMaybeQuestionsBank.length ? window.realMaybeQuestionsBank : fallbackQuestions;
+      const shuffled = [...source].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, Math.min(count, shuffled.length));
+    }
+
+    let realMaybeQuestions = pickRandomQuestions(10);
+
+    const quizState = {
+      index: 0,
+      score: 0,
+      answered: false
+    };
+
+    const quizQuestion = document.getElementById('quizQuestion');
+    const quizCount = document.getElementById('quizCount');
+    const quizScore = document.getElementById('quizScore');
+    const quizProgress = document.getElementById('quizProgress');
+    const quizOptions = document.querySelectorAll('#quizOptions .quiz-option');
+    const quizFeedback = document.getElementById('quizFeedback');
+    const quizResult = document.getElementById('quizResult');
+    const quizExplain = document.getElementById('quizExplain');
+    const quizNextAction = document.getElementById('quizNextAction');
+    const quizNext = document.getElementById('quizNext');
+    const quizRestart = document.getElementById('quizRestart');
+    const quizSummary = document.getElementById('quizSummary');
+    const quickChecks = document.querySelectorAll('.quick-check');
+    const quickCheckOutput = document.getElementById('quickCheckOutput');
+    const criteriaChoices = document.querySelectorAll('.criteria-choice');
+    const criteriaOutput = document.getElementById('criteriaOutput');
+    const saveNote = document.getElementById('saveNote');
+    const noteOutput = document.getElementById('noteOutput');
+
+    function renderQuizQuestion() {
+      const item = realMaybeQuestions[quizState.index];
+      quizState.answered = false;
+      quizQuestion.textContent = item.text;
+      quizCount.textContent = `문제 ${quizState.index + 1} / ${realMaybeQuestions.length}`;
+      quizScore.textContent = `맞힌 문제 ${quizState.score}개`;
+      quizProgress.style.width = `${((quizState.index + 1) / realMaybeQuestions.length) * 100}%`;
+      quizFeedback.classList.remove('show');
+      quizSummary.classList.remove('show');
+      quizNext.disabled = true;
+      quizNext.textContent = quizState.index === realMaybeQuestions.length - 1 ? '결과 보기' : '다음 문제';
+      quizOptions.forEach((button) => {
+        button.disabled = false;
+        button.classList.remove('selected', 'correct', 'wrong');
+      });
+    }
+
+    function chooseQuizAnswer(choice, button) {
+      if (quizState.answered) return;
+      const item = realMaybeQuestions[quizState.index];
+      const isCorrect = choice === item.answer;
+      quizState.answered = true;
+      if (isCorrect) quizState.score += 1;
+      quizOptions.forEach((option) => {
+        option.disabled = true;
+        if (option.dataset.choice === item.answer) option.classList.add('correct');
+      });
+      button.classList.add('selected');
+      if (!isCorrect) button.classList.add('wrong');
+      quizResult.textContent = isCorrect ? '맞아요. 좋은 판단이에요.' : `다시 생각해요. 이 문장은 “${item.answer}” 판단이 더 알맞아요.`;
+      quizResult.className = `quiz-result ${isCorrect ? 'ok' : 'no'}`;
+      quizExplain.textContent = item.explain;
+      quizNextAction.textContent = item.action;
+      quizFeedback.classList.add('show');
+      quizScore.textContent = `맞힌 문제 ${quizState.score}개`;
+      quizNext.disabled = false;
+    }
+
+    function showQuizSummary() {
+      quizFeedback.classList.remove('show');
+      quizSummary.innerHTML = `<strong>퀴즈 완료!</strong><br>총 ${realMaybeQuestions.length}문제 중 ${quizState.score}문제를 맞혔습니다. 틀린 문제는 실패가 아니라 확인할 신호입니다. AI 답변을 볼 때는 숫자, 날짜, 개인정보, 건강 정보, 친구를 평가하는 말을 먼저 살펴보세요.`;
+      quizSummary.classList.add('show');
+      quizNext.disabled = true;
+    }
+
+    function escapeHTML(value) {
+      return value.replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      })[char]);
+    }
+
+    quizOptions.forEach((button) => {
+      button.addEventListener('click', () => chooseQuizAnswer(button.dataset.choice, button));
+    });
+
+    quizNext.addEventListener('click', () => {
+      if (quizState.index === realMaybeQuestions.length - 1) {
+        showQuizSummary();
+        return;
+      }
+      quizState.index += 1;
+      renderQuizQuestion();
+    });
+
+    quizRestart.addEventListener('click', () => {
+      realMaybeQuestions = pickRandomQuestions(10);
+      quizState.index = 0;
+      quizState.score = 0;
+      renderQuizQuestion();
+    });
+
+    quickChecks.forEach((button) => {
+      button.addEventListener('click', () => {
+        quickChecks.forEach((item) => item.classList.remove('active'));
+        button.classList.add('active');
+        quickCheckOutput.textContent = button.dataset.check === 'correct'
+          ? '맞아요. “반드시”는 너무 강한 표현입니다. 건강이나 약에 관한 말은 한 번 더 확인해야 합니다.'
+          : '다시 생각해요. 이 문장에서 가장 조심해야 할 말은 “반드시”입니다. AI가 확신하듯 말해도 실제로는 사람마다 다를 수 있습니다.';
+      });
+    });
+
+    criteriaChoices.forEach((button) => {
+      button.addEventListener('click', () => {
+        criteriaChoices.forEach((item) => item.classList.remove('selected', 'correct', 'wrong'));
+        const isCorrect = button.dataset.criteria === '글쎄';
+        button.classList.add('selected', isCorrect ? 'correct' : 'wrong');
+        criteriaOutput.textContent = isCorrect
+          ? '맞아요. “무조건”이라는 말이 너무 단정적입니다. AI 답변은 확인할 자료이지 항상 정답은 아닙니다.'
+          : '다시 생각해요. “AI가 말했으니까 무조건 맞다”는 표현은 너무 단정적입니다. 이 경우에는 “글쎄”가 더 알맞습니다.';
+      });
+    });
+
+    saveNote.addEventListener('click', () => {
+      const sentence = document.getElementById('noteSentence').value.trim();
+      const selected = document.querySelector('input[name="noteChoice"]:checked');
+      const clue = document.getElementById('noteClue').value;
+      if (!sentence || !selected || !clue) {
+        noteOutput.textContent = 'AI 답변, 판단, 단서를 모두 입력해 주세요.';
+        return;
+      }
+      noteOutput.innerHTML = `<strong>나의 판단 기록</strong><br>내가 살펴본 문장: ${escapeHTML(sentence)}<br>내 판단: ${selected.value}<br>내가 본 단서: ${escapeHTML(clue)}<br>다음 행동: 이 단서를 바탕으로 교과서, 선생님, 보호자, 공식 자료 중 한 곳에서 확인합니다.`;
+    });
+
+    renderQuizQuestion();
+  </script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

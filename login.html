@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로그인 — AILIT</title>
+<meta name="description" content="AILIT 회원 로그인.">
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var t=localStorage.getItem('ailit-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="progress-bar"></div>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <nav class="nav-links">
+      <a href="elementary/index.html">초등</a>
+      <a href="middle/index.html">중등</a>
+      <a href="high/index.html">고등</a>
+      <a href="teacher/index.html">교사 허브</a>
+      <a href="login.html" class="nav-cta">로그인</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu">
+    <a href="elementary/index.html">초등</a>
+    <a href="middle/index.html">중등</a>
+    <a href="high/index.html">고등</a>
+    <a href="teacher/index.html">교사 허브</a>
+    <a href="login.html" class="nav-cta">로그인</a>
+  </nav>
+</header>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="auth-title">로그인</div>
+    <div class="auth-desc">이메일과 비밀번호를 입력하세요.</div>
+
+    <div id="formError" class="form-error" style="display:none;"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="form-field">
+        <label for="email">이메일</label>
+        <input type="email" id="email" autocomplete="email" placeholder="you@example.com" required>
+      </div>
+      <div class="form-field">
+        <label for="password">비밀번호</label>
+        <input type="password" id="password" autocomplete="current-password" placeholder="비밀번호" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">로그인</button>
+    </form>
+
+    <div class="auth-alt">아직 회원이 아니신가요? <a href="signup.html">회원가입</a></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="index.html" style="color:#64748B;">← 홈으로</a></span></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var form = document.getElementById('loginForm');
+  var errBox = document.getElementById('formError');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errBox.style.display = 'none';
+    var email = document.getElementById('email').value.trim();
+    var pw = document.getElementById('password').value;
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true; btn.textContent = '로그인 중...';
+    window.AilitAuth.login(email, pw).then(function () {
+      location.href = 'account.html';
+    }).catch(function (err) {
+      errBox.textContent = err.message; errBox.style.display = 'block';
+      btn.disabled = false; btn.textContent = '로그인';
+    });
+  });
+})();
+</script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

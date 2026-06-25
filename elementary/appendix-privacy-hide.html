@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개인정보 가리기 — ailit</title>
+  <meta name="description" content="초등학생이 AI 입력 전 개인정보를 찾아 안전한 표현으로 바꾸는 온라인 활동입니다.">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="progress-bar"></div>
+  <header class="site-header">
+    <div class="nav-inner">
+      <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+      <nav class="nav-links"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+      <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+    </div>
+    <nav class="mobile-menu"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+  </header>
+
+  <section class="hero-sub-page" style="background:linear-gradient(135deg,#0D9488 0%,#1E3A6E 100%);">
+    <div class="container hero-content">
+      <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#CCFBF1;">부록 03</span>
+      <h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">개인정보 가리기</h1>
+      <p class="hero-sub" style="font-size:16px;">AI에게 보내기 전에 이름, 학교, 위치, 친구 정보를 찾아 안전하게 바꿉니다.</p>
+    </div>
+  </section>
+
+  <style>
+    .privacy-panel{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:24px;box-shadow:0 14px 40px rgba(15,23,42,.08)}
+    .message-box{font-size:20px;line-height:1.7;color:var(--dark);font-weight:800;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:20px}
+    .word-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:20px}
+    .word-btn{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:13px;font-weight:900;cursor:pointer;color:var(--dark)}
+    .word-btn.correct{border-color:var(--teal);background:#CCFBF1;color:#115E59}
+    .word-btn.wrong{border-color:#FDBA74;background:#FFF7ED;color:#9A3412}
+    .feedback{margin-top:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;font-size:14px;line-height:1.8;color:var(--gray)}
+    .rewrite-grid{display:grid;gap:14px;margin-top:22px}
+    .rewrite-grid label{font-size:14px;font-weight:900;color:var(--dark)}
+    .rewrite-grid textarea,.rewrite-grid input{width:100%;margin-top:8px;border:1px solid #CBD5E1;border-radius:8px;padding:12px 14px;font:inherit;line-height:1.7}
+    .rewrite-grid textarea{min-height:110px;resize:vertical}
+    .risk-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:22px}
+    .risk-btn{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:14px;text-align:left;cursor:pointer}
+    .risk-btn strong{display:block;color:var(--dark);margin-bottom:6px}
+    .risk-btn span{font-size:13px;color:var(--gray);line-height:1.6}
+    .risk-btn.safe{border-color:var(--teal);background:#CCFBF1}
+    .risk-btn.careful{border-color:#FDBA74;background:#FFF7ED}
+    @media(max-width:760px){.word-grid,.risk-grid{grid-template-columns:1fr}}
+  </style>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">1단계</div>
+        <h2 class="section-title">AI에게 보내기 전<br>위험한 단어 찾기.</h2>
+        <p class="section-sub wide">아래 문장을 AI에게 그대로 보내면 나와 친구를 알아볼 수 있는 정보가 들어갑니다. 가려야 할 단어를 눌러 보세요.</p>
+      </div>
+      <div class="privacy-panel fade-up" style="margin-top:28px;">
+        <div class="message-box">나는 새빛초 5학년 2반 김도윤이야. 우리 반 이서준이 전학 가서 섭섭해. 위로 편지를 써 줘.</div>
+        <div class="word-grid" id="wordGrid"></div>
+        <div class="feedback" id="wordFeedback">가려야 할 정보를 모두 찾아 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-light">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">2단계</div>
+        <h2 class="section-title">안전한 문장으로<br>바꿔 보기.</h2>
+        <p class="section-sub wide">개인정보를 없애도 AI에게 부탁할 수 있습니다. 이름과 학교를 빼고, 상황만 남겨 보세요.</p>
+      </div>
+      <div class="privacy-panel fade-up" style="margin-top:28px;">
+        <div class="rewrite-grid">
+          <label>AI에게 보낼 안전한 문장<textarea id="safeText" placeholder="예: 같은 반 친구가 전학을 가서 아쉬워. 친구에게 줄 짧은 위로 편지를 써 줘."></textarea></label>
+          <button class="btn btn-primary" type="button" id="checkSafeText">안전한지 확인하기</button>
+          <div class="feedback" id="safeTextOutput">이름, 학교, 반, 주소, 전화번호 같은 정보가 빠졌는지 확인해 봅니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">3단계</div>
+        <h2 class="section-title">넣어도 되는 정보와<br>조심할 정보를 구분해요.</h2>
+        <p class="section-sub wide">모든 정보가 위험한 것은 아닙니다. 하지만 나나 친구를 알아볼 수 있는 단서는 조심해야 합니다.</p>
+      </div>
+      <div class="privacy-panel fade-up" style="margin-top:28px;">
+        <div class="risk-grid" id="riskGrid"></div>
+        <div class="feedback" id="riskOutput">각 항목을 눌러 안전한 정보인지 확인해 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-sm bg-light">
+    <div class="container" style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="appendix-ai-bingo.html" class="btn btn-outline">← 이전</a>
+      <a href="index.html" class="btn btn-outline">초등 코스</a>
+      <a href="appendix-ai-promise-card.html" class="btn btn-primary">다음 →</a>
+    </div>
+  </section>
+
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-bottom"><span>© 2026 ailit. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">홈으로</a></span></div></div></footer>
+  <script>
+    const words = [
+      { label: '새빛초', private: true },
+      { label: '5학년 2반', private: true },
+      { label: '김도윤', private: true },
+      { label: '이서준', private: true },
+      { label: '전학', private: false },
+      { label: '위로 편지', private: false }
+    ];
+    const wordGrid = document.getElementById('wordGrid');
+    words.forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'word-btn';
+      button.textContent = item.label;
+      button.addEventListener('click', () => {
+        button.classList.add(item.private ? 'correct' : 'wrong');
+        document.getElementById('wordFeedback').textContent = item.private ? `${item.label}: 맞아요. 나나 친구를 알아볼 수 있는 정보입니다.` : `${item.label}: 이 말은 상황 설명입니다. 이름이나 위치처럼 바로 알아볼 수 있는 정보는 아닙니다.`;
+      });
+      wordGrid.appendChild(button);
+    });
+
+    document.getElementById('checkSafeText').addEventListener('click', () => {
+      const text = document.getElementById('safeText').value.trim();
+      const risky = ['새빛초', '김도윤', '이서준', '5학년', '2반', '주소', '전화번호'];
+      if (!text) {
+        document.getElementById('safeTextOutput').textContent = '안전하게 바꾼 문장을 먼저 적어 주세요.';
+        return;
+      }
+      const found = risky.filter((word) => text.includes(word));
+      document.getElementById('safeTextOutput').textContent = found.length ? `아직 조심할 정보가 남아 있어요: ${found.join(', ')}. 알아볼 수 없는 표현으로 바꿔 보세요.` : '좋아요. 이름, 학교, 반처럼 바로 알아볼 수 있는 정보가 보이지 않습니다.';
+    });
+
+    const riskItems = [
+      { title: '내 이름', desc: '나를 바로 알아볼 수 있습니다.', safe: false },
+      { title: '좋아하는 색', desc: '대부분은 나를 바로 찾기 어렵습니다.', safe: true },
+      { title: '학교와 반', desc: '내 위치를 추측할 수 있습니다.', safe: false },
+      { title: '친구의 비밀', desc: '내 정보가 아니므로 더 조심해야 합니다.', safe: false },
+      { title: '숙제 주제', desc: '개인정보 없이 질문할 수 있습니다.', safe: true },
+      { title: '집 주소', desc: '절대 함부로 입력하면 안 됩니다.', safe: false }
+    ];
+    const riskGrid = document.getElementById('riskGrid');
+    riskItems.forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'risk-btn';
+      button.innerHTML = `<strong>${item.title}</strong><span>${item.desc}</span>`;
+      button.addEventListener('click', () => {
+        button.classList.add(item.safe ? 'safe' : 'careful');
+        document.getElementById('riskOutput').textContent = item.safe ? '대체로 괜찮지만, 다른 정보와 합쳐지면 단서가 될 수 있는지도 생각합니다.' : '조심해야 합니다. AI나 온라인에 바로 넣지 말고 어른과 먼저 상의합니다.';
+      });
+      riskGrid.appendChild(button);
+    });
+  </script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

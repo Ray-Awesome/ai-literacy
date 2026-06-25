@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>생활 속 AI 찾기 — ailit</title>
+  <meta name="description" content="초등학생이 생활 속 AI 기능을 직접 분류하고 설명하는 온라인 활동입니다.">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="progress-bar"></div>
+  <header class="site-header">
+    <div class="nav-inner">
+      <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+      <nav class="nav-links"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+      <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+    </div>
+    <nav class="mobile-menu"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+  </header>
+
+  <section class="hero-sub-page" style="background:linear-gradient(135deg,#0D9488 0%,#1E3A6E 100%);">
+    <div class="container hero-content">
+      <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#CCFBF1;">부록 02</span>
+      <h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">생활 속 AI 찾기</h1>
+      <p class="hero-sub" style="font-size:16px;">내 주변 서비스가 어떤 방식으로 나를 도와주는지 직접 분류해 봅니다.</p>
+    </div>
+  </section>
+
+  <style>
+    .activity-panel{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:24px;box-shadow:0 14px 40px rgba(15,23,42,.08)}
+    .ai-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:24px}
+    .ai-tile{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:16px;text-align:left;cursor:pointer;min-height:120px;transition:all .16s ease}
+    .ai-tile strong{display:block;color:var(--dark);font-size:16px;margin-bottom:8px}
+    .ai-tile span{font-size:13px;color:var(--gray);line-height:1.6}
+    .ai-tile:hover{border-color:var(--teal);transform:translateY(-1px)}
+    .ai-tile.selected{border-color:var(--teal);background:#CCFBF1}
+    .sort-box{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:24px}
+    .choice-button{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:14px;font-weight:900;cursor:pointer;color:var(--dark)}
+    .choice-button.correct{border-color:var(--teal);background:#CCFBF1;color:#115E59}
+    .choice-button.wrong{border-color:#FDBA74;background:#FFF7ED;color:#9A3412}
+    .feedback{margin-top:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;font-size:14px;line-height:1.8;color:var(--gray)}
+    .form-grid{display:grid;gap:14px;margin-top:22px}
+    .form-grid label{font-size:14px;font-weight:900;color:var(--dark)}
+    .form-grid input,.form-grid select{width:100%;margin-top:8px;border:1px solid #CBD5E1;border-radius:8px;padding:12px 14px;font:inherit}
+    @media(max-width:760px){.ai-grid,.sort-box{grid-template-columns:1fr}}
+  </style>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">1단계</div>
+        <h2 class="section-title">AI일 것 같은 기능을<br>골라 보세요.</h2>
+        <p class="section-sub wide">AI는 꼭 로봇 모양으로 나타나지 않습니다. 추천, 인식, 자동 분류처럼 뒤에서 판단을 돕는 기능으로 숨어 있을 때가 많습니다.</p>
+      </div>
+      <div class="activity-panel fade-up" style="margin-top:28px;">
+        <div id="aiTiles" class="ai-grid"></div>
+        <div class="feedback" id="bingoResult">AI가 쓰였을 것 같은 기능을 모두 눌러 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-light">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">2단계</div>
+        <h2 class="section-title">이 기능은<br>무엇을 하는 AI일까요.</h2>
+        <p class="section-sub wide">AI를 찾았다면 다음에는 어떤 일을 하는지 구분합니다. 추천, 인식, 분류는 서로 다른 방식으로 생활 속 결정을 돕습니다.</p>
+      </div>
+      <div class="activity-panel fade-up" style="margin-top:28px;">
+        <strong id="sortQuestion">문제를 불러오는 중입니다.</strong>
+        <div class="sort-box" id="sortChoices"></div>
+        <div class="feedback" id="sortFeedback">알맞은 설명을 골라 보세요.</div>
+        <button class="btn btn-primary" type="button" id="nextSort" style="margin-top:16px;">다음 문제</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">3단계</div>
+        <h2 class="section-title">내 주변 AI를<br>하나 기록해요.</h2>
+        <p class="section-sub wide">마지막으로 오늘 본 AI 기능을 하나 골라, 어디에서 봤고 어떤 도움을 주는지 적어 봅니다.</p>
+      </div>
+      <div class="activity-panel fade-up" style="margin-top:28px;">
+        <div class="form-grid">
+          <label>어디에서 봤나요?<input id="placeInput" placeholder="예: 동영상 앱, 사진 앱, 검색창"></label>
+          <label>어떤 일을 하나요?
+            <select id="typeInput">
+              <option>추천한다</option>
+              <option>알아본다</option>
+              <option>분류한다</option>
+              <option>예측한다</option>
+            </select>
+          </label>
+          <label>나에게 어떤 도움이 되나요?<input id="helpInput" placeholder="예: 보고 싶은 영상을 빨리 찾게 해 준다"></label>
+          <button class="btn btn-primary" type="button" id="makeObservation">내 기록 만들기</button>
+          <div class="feedback" id="observationOutput">칸을 채우면 나의 생활 속 AI 기록이 만들어집니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-sm bg-light">
+    <div class="container" style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="appendix-real-maybe-cards.html" class="btn btn-outline">← 이전</a>
+      <a href="index.html" class="btn btn-outline">초등 코스</a>
+      <a href="appendix-privacy-hide.html" class="btn btn-primary">다음 →</a>
+    </div>
+  </section>
+
+  <footer class="site-footer"><div class="footer-inner"><div class="footer-bottom"><span>© 2026 ailit. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">홈으로</a></span></div></div></footer>
+  <script>
+    const aiItems = [
+      { title: '추천 영상', desc: '내가 본 영상과 비슷한 영상을 보여 줍니다.', ai: true },
+      { title: '음성 인식', desc: '말소리를 글자나 명령으로 바꿉니다.', ai: true },
+      { title: '사진 속 얼굴 묶기', desc: '비슷한 얼굴 사진을 모아 보여 줍니다.', ai: true },
+      { title: '종이 달력', desc: '날짜를 보여 주지만 스스로 판단하지 않습니다.', ai: false },
+      { title: '자동 번역', desc: '한 언어를 다른 언어로 바꿉니다.', ai: true },
+      { title: '손전등 버튼', desc: '누르면 불이 켜지는 단순 기능입니다.', ai: false },
+      { title: '검색어 자동 완성', desc: '입력 중인 말에 맞춰 다음 말을 제안합니다.', ai: true },
+      { title: '연필깎이', desc: '연필을 깎지만 정보를 판단하지 않습니다.', ai: false },
+      { title: '스팸 문자 분류', desc: '수상한 문자를 걸러 냅니다.', ai: true }
+    ];
+    const sortItems = [
+      { q: '동영상 앱이 내가 좋아할 만한 영상을 보여 줍니다.', answer: '추천한다' },
+      { q: '사진 앱이 강아지 사진을 모아 줍니다.', answer: '분류한다' },
+      { q: '휴대폰이 내 말을 듣고 글자로 바꿉니다.', answer: '알아본다' },
+      { q: '날씨 앱이 오후에 비가 올 가능성을 알려 줍니다.', answer: '예측한다' }
+    ];
+    const sortLabels = ['추천한다', '알아본다', '분류한다', '예측한다'];
+    let sortIndex = 0;
+
+    const aiTiles = document.getElementById('aiTiles');
+    const bingoResult = document.getElementById('bingoResult');
+    aiItems.forEach((item) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'ai-tile';
+      button.innerHTML = `<strong>${item.title}</strong><span>${item.desc}</span>`;
+      button.addEventListener('click', () => {
+        button.classList.toggle('selected');
+        const selected = [...document.querySelectorAll('.ai-tile.selected')].length;
+        const correctSelected = [...document.querySelectorAll('.ai-tile.selected')].filter((tile) => aiItems[[...aiTiles.children].indexOf(tile)].ai).length;
+        bingoResult.textContent = `선택한 기능 ${selected}개 중 AI일 가능성이 큰 기능은 ${correctSelected}개입니다. AI는 추천, 인식, 분류, 예측처럼 판단을 돕는 기능에 자주 쓰입니다.`;
+      });
+      aiTiles.appendChild(button);
+    });
+
+    function renderSort() {
+      const item = sortItems[sortIndex];
+      document.getElementById('sortQuestion').textContent = item.q;
+      const box = document.getElementById('sortChoices');
+      box.innerHTML = '';
+      document.getElementById('sortFeedback').textContent = '알맞은 설명을 골라 보세요.';
+      sortLabels.forEach((label) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'choice-button';
+        button.textContent = label;
+        button.addEventListener('click', () => {
+          box.querySelectorAll('button').forEach((b) => b.classList.remove('correct', 'wrong'));
+          button.classList.add(label === item.answer ? 'correct' : 'wrong');
+          document.getElementById('sortFeedback').textContent = label === item.answer ? '맞아요. 이 기능은 정보를 보고 알맞게 처리합니다.' : `다시 생각해요. 이 문장은 “${item.answer}”에 더 가깝습니다.`;
+        });
+        box.appendChild(button);
+      });
+    }
+    document.getElementById('nextSort').addEventListener('click', () => {
+      sortIndex = (sortIndex + 1) % sortItems.length;
+      renderSort();
+    });
+    document.getElementById('makeObservation').addEventListener('click', () => {
+      const place = document.getElementById('placeInput').value.trim();
+      const type = document.getElementById('typeInput').value;
+      const help = document.getElementById('helpInput').value.trim();
+      document.getElementById('observationOutput').textContent = place && help ? `내가 찾은 AI: ${place}에서는 AI가 정보를 보고 ${type}. 나에게는 “${help}”는 도움을 줍니다.` : '어디에서 봤는지와 어떤 도움이 되는지 모두 적어 주세요.';
+    });
+    renderSort();
+  </script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

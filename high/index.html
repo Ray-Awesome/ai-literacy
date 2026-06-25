@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>고등학생 코스 — ailit</title>
-<meta name="description" content="고등학생을 위한 AI 리터러시 심화 교육. 12강, 5단계 출처 검증, 허위정보 분석, 진로 연계 보고서.">
+<title>고등 코스 — ailit</title>
+<meta name="description" content="고등 학습자를 위한 AI 리터러시 실습 플랫폼. 프롬프트 설계, 출처 검증, AI 사용 표시를 직접 해봅니다.">
 <link rel="stylesheet" href="../css/style.css">
 </head>
 <body>
@@ -12,87 +12,158 @@
 
 <header class="site-header">
   <div class="nav-inner">
-    <a href="../index.html" class="nav-logo">ail<span>it</span></a>
+    <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
     <nav class="nav-links">
-      <a href="../elementary/">초등</a>
-      <a href="../middle/">중학생</a>
-      <a href="./" class="active">고등학생</a>
-      <a href="../teacher/">교사 허브</a>
-      <a href="../thinking-tools/">사고 도구</a>
-      <a href="mailto:awesome.ai.life@gmail.com" class="nav-cta">문의하기</a>
+      <a href="../elementary/index.html">초등</a>
+      <a href="../middle/index.html">중등</a>
+      <a href="index.html" class="active">고등</a>
+      <a href="../teacher/index.html">교사 허브</a>
+      <a href="../thinking-tools/index.html">사고 도구</a>
+      <a href="../index.html#contact" class="nav-cta">문의하기</a>
     </nav>
     <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
   </div>
   <nav class="mobile-menu">
-    <a href="../elementary/">초등 5·6학년</a>
-    <a href="../middle/">중학생</a>
-    <a href="./" class="active">고등학생</a>
-    <a href="../teacher/">교사 허브</a>
-    <a href="../thinking-tools/">사고 도구</a>
-    <a href="mailto:awesome.ai.life@gmail.com" class="nav-cta">문의하기</a>
+    <a href="../elementary/index.html">초등 5·6학년</a>
+    <a href="../middle/index.html">중등</a>
+    <a href="index.html" class="active">고등</a>
+    <a href="../teacher/index.html">교사 허브</a>
+    <a href="../thinking-tools/index.html">사고 도구</a>
+    <a href="../index.html#contact" class="nav-cta">문의하기</a>
   </nav>
 </header>
 
 <!-- 히어로 -->
 <section class="hero-sub-page">
   <div class="container hero-content">
-    <span class="hero-badge" style="background:rgba(30,58,110,.4);color:#93C5FD;">고등학생</span>
+    <span class="hero-badge" style="background:rgba(30,58,110,.4);color:#93C5FD;">고등</span>
     <h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">판단의 과정을<br>설명한다.</h1>
-    <p class="hero-sub" style="font-size:16px;">12강 · 4주 심화 활동 · 최종 프로젝트 · 부록 4종</p>
+    <p class="hero-sub" style="font-size:16px;">12개 핵심 강의 · 4개 주간 활동 · 최종 미니 프로젝트 · 4개 부록 실습</p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
-      <a href="../teacher/" class="btn btn-secondary btn-sm">교사 운영안 →</a>
-      <a href="../thinking-tools/" class="btn btn-secondary btn-sm">사고 도구 →</a>
+      <a href="#lessons" class="btn btn-secondary btn-sm">12강 전체 보기 →</a>
+      <a href="appendix-prompt-guide.html" class="btn btn-secondary btn-sm">프롬프트 실습 시작 →</a>
+      <a href="appendix-verification-checklist.html" class="btn btn-secondary btn-sm">출처 검증 실습 →</a>
     </div>
   </div>
 </section>
 
-<!-- 완성 배지 배너 -->
+<!-- 코스 안내 배너 -->
 <div class="container" style="padding-top:32px;">
   <div class="notice-banner green">
     <span>✅</span>
-    <div><strong>HTML 코스 완성:</strong> 고등학생 코스는 12강 + 4주 활동 + 최종 프로젝트 + 부록 4종이 이미 완성된 상태입니다. 교사 허브와 연동됩니다.</div>
+    <div><strong>온라인 실습 구성:</strong> 고등 코스는 12강 흐름 위에 프롬프트 설계, 출처 검증, AI 사용 표시를 직접 해보는 실습으로 구성되어 있습니다.</div>
   </div>
 </div>
 
+<!-- 코스 개요 -->
+<section class="section" id="overview">
+  <div class="container">
+    <div class="fade-up">
+      <div class="eyebrow navy">코스 개요</div>
+      <h2 class="section-title">AI를 잘 쓰는 학생에서<br>AI를 판단하는 시민으로.</h2>
+      <p class="section-sub wide">고등학생이 AI를 두려워하거나 맹신하지 않고, 도구로 쓰되 판단의 주인은 자신에게 있음을 익히도록 설계한 4주 자기주도 코스입니다.</p>
+    </div>
+    <div class="compare-wrap fade-up" style="margin-top:36px;">
+      <table class="compare-table">
+        <thead><tr><th class="col-item">항목</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td class="col-item">대상</td><td class="col-ailit">고등학교 1~2학년 중심, 자기주도 학습자</td></tr>
+          <tr><td class="col-item">기간</td><td class="col-ailit">여름방학 4주, 주 3회, 회당 30~50분</td></tr>
+          <tr><td class="col-item">구성</td><td class="col-ailit">12개 핵심 강의 · 4개 주간 활동 · 1개 최종 프로젝트 · 4개 부록</td></tr>
+          <tr><td class="col-item">핵심 역량</td><td class="col-ailit">질문력, 검증력, 개인정보 보호, 윤리 판단, 진로 해석</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid-2 fade-up" style="margin-top:28px;">
+      <div class="card"><strong>다정하게, 단정하지 않게</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">학생이 이미 아는 생활 경험에서 출발하고, 정답을 외우게 하지 않습니다. 질문하고 확인하고 자기 판단을 남깁니다.</p></div>
+      <div class="card"><strong>활용법을 넘어 판단까지</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">검증, 개인정보, 저작권, 허위정보 대응을 함께 다룹니다. 민감한 주제는 피해 예방과 보호 관점을 우선합니다.</p></div>
+    </div>
+  </div>
+</section>
+
 <!-- 4주 커리큘럼 -->
-<section class="section">
+<section class="section bg-light">
   <div class="container">
     <div class="fade-up">
       <div class="eyebrow navy">4주 심화 커리큘럼</div>
       <h2 class="section-title">12강으로<br>AI 판단력을 기른다.</h2>
+      <p class="section-sub">1주차에는 AI를 오해하지 않는 법을, 2주차에는 잘 묻고 검증하는 법을, 3주차에는 윤리와 안전의 선을, 4주차에는 사회와 진로를 읽습니다.</p>
     </div>
     <div class="week-grid fade-up">
       <div class="week-card" style="border-top:5px solid var(--teal);">
         <div class="week-card-head"><div class="week-num c-teal">1주</div><div class="week-title c-teal">멈추기</div></div>
         <hr class="week-divider">
-        <div class="week-items">AI 구조 이해<br>환각(Hallucination)의 원리<br>유창함 ≠ 정확성</div>
+        <div class="week-items">AI 구조 이해<br>환각(Hallucination)의 원리<br>유창함 ≠ 정확성<br><a href="week-01.html" class="btn btn-sm btn-outline" style="margin-top:14px;">1주차 자세히 보기</a></div>
       </div>
       <div class="week-card" style="border-top:5px solid var(--blue);">
         <div class="week-card-head"><div class="week-num c-blue">2주</div><div class="week-title c-blue">묻기</div></div>
         <hr class="week-divider">
-        <div class="week-items">프롬프트 설계 원칙<br>검증 가능한 질문 만들기<br>질문의 목적 명시하기</div>
+        <div class="week-items">프롬프트 설계 원칙<br>검증 가능한 질문 만들기<br>질문의 목적 명시하기<br><a href="week-02.html" class="btn btn-sm btn-outline" style="margin-top:14px;">2주차 자세히 보기</a></div>
       </div>
       <div class="week-card" style="border-top:5px solid var(--navy);">
         <div class="week-card-head"><div class="week-num c-navy">3주</div><div class="week-title c-navy">따져보기</div></div>
         <hr class="week-divider">
-        <div class="week-items">출처·원문·저작권·개인정보<br>5단계 검증 프로세스<br>허위정보 판별 실습</div>
+        <div class="week-items">출처·원문·저작권·개인정보<br>5단계 검증 프로세스<br>허위정보 판별 실습<br><a href="week-03.html" class="btn btn-sm btn-outline" style="margin-top:14px;">3주차 자세히 보기</a></div>
       </div>
       <div class="week-card" style="border-top:5px solid var(--orange);">
         <div class="week-card-head"><div class="week-num c-orange">4주</div><div class="week-title c-orange">설명하기</div></div>
         <hr class="week-divider">
-        <div class="week-items">허위정보 분석 보고서<br>진로 연계 AI 사용 해석<br>AI 사용 표시 원칙</div>
+        <div class="week-items">허위정보 분석 보고서<br>진로 연계 AI 사용 해석<br>AI 사용 표시 원칙<br><a href="week-04.html" class="btn btn-sm btn-outline" style="margin-top:14px;">4주차 자세히 보기</a></div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- 12강 핵심 강의 -->
+<section class="section" id="lessons">
+  <div class="container">
+    <div class="fade-up">
+      <div class="eyebrow navy">핵심 강의</div>
+      <h2 class="section-title">12개 강의로<br>하나씩 따져본다.</h2>
+      <p class="section-sub wide">4주 커리큘럼을 이루는 12개 강의입니다. 검색과 생성의 차이에서 시작해 검증, 윤리, 허위정보, 진로 변화까지 차례로 읽고 실험합니다.</p>
+    </div>
+    <div class="grid-3 fade-up" style="margin-top:40px;">
+      <a class="card" href="lesson-01-search-vs-ai.html"><div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:6px;">1강 · 멈추기</div><strong>AI는 검색엔진이 아니다</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">생성형 AI는 정보를 찾는 도구가 아니라 문장을 만드는 도구입니다.</p></a>
+      <a class="card" href="lesson-02-how-ai-writes.html"><div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:6px;">2강 · 멈추기</div><strong>AI는 어떻게 문장을 만드는가</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">의미를 이해하기보다 다음에 올 말을 예측해 문장을 이어 갑니다.</p></a>
+      <a class="card" href="lesson-03-hallucination.html"><div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:6px;">3강 · 멈추기</div><strong>환각은 왜 생기는가</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">AI의 자신감은 정확성의 증거가 아닙니다.</p></a>
+      <a class="card" href="lesson-04-prompt-structure.html"><div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">4강 · 묻기</div><strong>프롬프트의 기본 구조</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">역할·목적·대상·조건·형식으로 질문을 설계합니다.</p></a>
+      <a class="card" href="lesson-05-verifiable-questions.html"><div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">5강 · 묻기</div><strong>검증 가능한 질문 만들기</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">믿기 전에 확인할 수 있도록 질문을 설계합니다.</p></a>
+      <a class="card" href="lesson-06-purposeful-prompting.html"><div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">6강 · 묻기</div><strong>질문의 목적 명시하기</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">보고서·발표·토론 목적에 따라 질문을 다르게 만듭니다.</p></a>
+      <a class="card" href="lesson-07-source-verification.html"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">7강 · 따져보기</div><strong>5단계 출처 검증</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">출처·원문·교차 자료·권리·표시를 순서대로 확인합니다.</p></a>
+      <a class="card" href="lesson-08-copyright-privacy.html"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">8강 · 따져보기</div><strong>저작권과 개인정보</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">자료 입력과 결과물 사용에서 권리를 판단합니다.</p></a>
+      <a class="card" href="lesson-09-misinformation-detection.html"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">9강 · 따져보기</div><strong>허위정보 판별</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">그럴듯한 숫자, 감정적 제목, 출처 없는 인용을 가려냅니다.</p></a>
+      <a class="card" href="lesson-10-misinformation-report.html"><div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px;">10강 · 설명하기</div><strong>허위정보 분석 보고서</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">주장·근거·출처·오류 가능성으로 분석합니다.</p></a>
+      <a class="card" href="lesson-11-career-ai-analysis.html"><div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px;">11강 · 설명하기</div><strong>진로 연계 AI 사용 해석</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">진로에서 자동화되는 일과 더 중요해지는 판단을 봅니다.</p></a>
+      <a class="card" href="lesson-12-ai-use-disclosure.html"><div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px;">12강 · 설명하기</div><strong>AI 사용 표시 원칙</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">도움받은 부분·참고·수정·최종 판단을 구분해 표시합니다.</p></a>
+    </div>
+  </div>
+</section>
+
+<!-- 주간 활동 & 최종 프로젝트 -->
+<section class="section bg-light" id="activities">
+  <div class="container">
+    <div class="fade-up">
+      <div class="eyebrow navy">주간 활동 & 최종 프로젝트</div>
+      <h2 class="section-title">읽기로 끝나지 않고<br>직접 만들어 본다.</h2>
+      <p class="section-sub wide">매주 한 가지 결과물을 남기고, 마지막에는 배운 것을 하나의 프로젝트로 묶습니다.</p>
+    </div>
+    <div class="grid-3 fade-up" style="margin-top:40px;">
+      <a class="card" href="week-01.html"><div style="font-size:12px;font-weight:700;color:var(--teal);margin-bottom:6px;">1주차 활동</div><strong>AI 답변 분해하기</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">AI 답변 하나를 사실·추정·의견·미확인으로 나눠 봅니다.</p></a>
+      <a class="card" href="week-02.html"><div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">2주차 활동</div><strong>나만의 AI 학습 프롬프트 만들기</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">목적에 맞게 검증 가능한 질문 세트를 직접 설계합니다.</p></a>
+      <a class="card" href="week-03.html"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">3주차 활동</div><strong>AI 사용 윤리 선언문 만들기</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">개인정보·저작권·표시 원칙을 나의 규칙으로 정리합니다.</p></a>
+      <a class="card" href="week-04.html"><div style="font-size:12px;font-weight:700;color:var(--orange);margin-bottom:6px;">4주차 활동</div><strong>나의 AI 진로 지도 만들기</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">관심 진로에서 바뀌는 일과 남는 판단을 지도로 그립니다.</p></a>
+      <a class="card" href="project.html" style="border-left:4px solid var(--navy);"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">최종 미니 프로젝트</div><strong>AI 답변을 믿어도 될까?</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">답변 하나를 5단계로 검증하고 판단의 과정을 보고서로 설명합니다.</p></a>
+    </div>
+  </div>
+</section>
+
 <!-- 5단계 검증 프로세스 -->
-<section class="section bg-light">
+<section class="section">
   <div class="container">
     <div class="fade-up">
       <div class="eyebrow navy">핵심 역량</div>
-      <h2 class="section-title">5단계 출처 검증<br>프로세스.</h2>
-      <p class="section-sub">모든 정보를 5단계로 검증하는 구조화된 절차를 체화합니다.</p>
+      <h2 class="section-title">AI 답변을<br>5단계로 검증한다.</h2>
+      <p class="section-sub">아래 절차를 본 뒤, 부록 실습에서 실제 AI 답변을 직접 판정합니다.</p>
     </div>
     <div class="phase-list fade-up">
       <div class="phase-row">
@@ -130,49 +201,43 @@
 </section>
 
 <!-- 부록 4종 -->
-<section class="section">
+<section class="section bg-light">
   <div class="container">
     <div class="fade-up">
-      <div class="eyebrow navy">부록 4종 (완성)</div>
-      <h2 class="section-title">바로 쓸 수 있는<br>심화 도구.</h2>
+      <div class="eyebrow navy">부록 4종</div>
+      <h2 class="section-title">직접 해보는<br>고등 실습.</h2>
     </div>
     <div class="resource-grid fade-up">
       <div class="resource-card" style="border-top:3px solid var(--navy);">
-        <div class="resource-icon">📝</div>
-        <div class="resource-title c-navy">기본 프롬프트 가이드</div>
-        <div class="resource-desc">목적·조건·제약을 포함한 프롬프트 설계 템플릿과 예시 모음.</div>
+        <div class="resource-icon">01</div>
+        <div class="resource-title c-navy">고등 프롬프트 설계</div>
+        <div class="resource-desc">보고서·발표·토론에 쓸 검증 가능한 프롬프트를 직접 설계합니다.</div>
+        <a href="appendix-prompt-guide.html" class="btn btn-outline" style="margin-top:18px;">실습 시작</a>
       </div>
       <div class="resource-card" style="border-top:3px solid var(--navy);">
-        <div class="resource-icon">✅</div>
-        <div class="resource-title c-navy">검증 체크리스트</div>
-        <div class="resource-desc">5단계 출처 검증을 셀프 체크하는 한 장짜리 체크리스트.</div>
+        <div class="resource-icon">02</div>
+        <div class="resource-title c-navy">5단계 출처 검증 실습</div>
+        <div class="resource-desc">AI 답변을 과제에 쓰기 전 5단계로 직접 판정합니다.</div>
+        <a href="appendix-verification-checklist.html" class="btn btn-outline" style="margin-top:18px;">실습 시작</a>
       </div>
       <div class="resource-card" style="border-top:3px solid var(--navy);">
-        <div class="resource-icon">📊</div>
-        <div class="resource-title c-navy">AI 사용 기록표</div>
-        <div class="resource-desc">과제·프로젝트별 AI 사용 내역을 기록하는 표. 수행평가 근거 자료로 활용.</div>
+        <div class="resource-icon">03</div>
+        <div class="resource-title c-navy">고등 AI 사용 기록</div>
+        <div class="resource-desc">AI가 한 일과 내가 책임진 일을 구분해 제출 문구로 만듭니다.</div>
+        <a href="appendix-ai-use-log.html" class="btn btn-outline" style="margin-top:18px;">실습 시작</a>
       </div>
       <div class="resource-card" style="border-top:3px solid var(--navy);">
-        <div class="resource-icon">🔍</div>
-        <div class="resource-title c-navy">자가진단 설문</div>
-        <div class="resource-desc">4주 과정 후 내 AI 리터러시 수준을 스스로 점검하는 설문지.</div>
-      </div>
-      <div class="resource-card" style="border-top:3px solid var(--orange);">
-        <div class="resource-icon">🎯</div>
-        <div class="resource-title c-orange">AI 답변 오류 시뮬레이터</div>
-        <div class="resource-desc">AI의 환각·편향·과신 사례를 직접 체험하는 인터랙티브 시뮬레이션. (심화)</div>
-      </div>
-      <div class="resource-card" style="border-top:3px solid var(--orange);">
-        <div class="resource-icon">🚀</div>
-        <div class="resource-title c-orange">진로 연계 패키지</div>
-        <div class="resource-desc">AI 리터러시를 진로 역량으로 연결하는 자기소개서·포트폴리오 가이드.</div>
+        <div class="resource-icon">04</div>
+        <div class="resource-title c-navy">고등 AI 리터러시 자가진단</div>
+        <div class="resource-desc">질문 설계, 검증, 윤리, 설명 책임을 점수로 확인합니다.</div>
+        <a href="appendix-self-diagnosis.html" class="btn btn-outline" style="margin-top:18px;">실습 시작</a>
       </div>
     </div>
   </div>
 </section>
 
 <!-- 해외 사례 -->
-<section class="section bg-light">
+<section class="section">
   <div class="container">
     <div class="fade-up">
       <div class="eyebrow blue">해외 사례</div>
@@ -183,16 +248,19 @@
         <div style="font-size:22px;margin-bottom:8px;">🇺🇸</div>
         <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">Stanford CRAFT</div>
         <p style="font-size:13px;color:var(--gray);">고교 교사 대상. 수학·역사·국어·미술 융합, 45-60분 완결형 모듈. 교과 연계의 글로벌 표준.</p>
+        <a href="global-stanford-craft.html" class="btn btn-sm btn-outline" style="margin-top:14px;">사례 자세히 보기</a>
       </div>
       <div class="card">
         <div style="font-size:22px;margin-bottom:8px;">🇺🇸</div>
         <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">AI4K12 고교 3단계</div>
         <p style="font-size:13px;color:var(--gray);">Foundations → AI Concepts → AI Applications (CTE). 진로 연계 체계화의 모델.</p>
+        <a href="global-ai4k12.html" class="btn btn-sm btn-outline" style="margin-top:14px;">사례 자세히 보기</a>
       </div>
       <div class="card">
         <div style="font-size:22px;margin-bottom:8px;">🇪🇺</div>
-        <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">AI-ENTR4YOUTH</div>
+        <div style="font-weight:700;color:var(--navy);margin-bottom:6px;">Technovation</div>
         <p style="font-size:13px;color:var(--gray);">팀 기반, 노코드 AI + 프로토타입, 기업가 정신 결합. 판단력 + 창의성 통합 모델.</p>
+        <a href="global-ai-entr4youth.html" class="btn btn-sm btn-outline" style="margin-top:14px;">사례 자세히 보기</a>
       </div>
     </div>
   </div>
@@ -202,9 +270,9 @@
   <div class="container">
     <div class="cta-banner fade-up">
       <div class="cta-content">
-        <h2 class="cta-title">고등 코스를 수업에 도입하려면.</h2>
-        <p class="cta-sub">12강 수업안과 부록 4종을 교사 허브에서 바로 내려받으세요.</p>
-        <a href="../teacher/" class="btn btn-primary">교사 허브 바로 가기</a>
+        <h2 class="cta-title">고등 실습을 바로 시작하려면.</h2>
+        <p class="cta-sub">프롬프트 설계부터 시작해 출처 검증, 사용 기록, 자가진단까지 차례로 진행합니다.</p>
+        <a href="appendix-prompt-guide.html" class="btn btn-primary">고등 실습 시작</a>
       </div>
     </div>
   </div>
@@ -213,13 +281,13 @@
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
-      <div><div class="footer-logo">ail<span>it</span></div><div class="footer-tagline">AI 리터러시 통합 교육 플랫폼</div></div>
+      <div><div class="footer-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></div><div class="footer-tagline">AI 리터러시 통합 교육 플랫폼</div></div>
       <div class="footer-links">
-        <div class="footer-col"><h4>코스</h4><a href="../elementary/">초등</a><a href="../middle/">중학생</a><a href="./">고등학생</a><a href="../teacher/">교사 허브</a></div>
-        <div class="footer-col"><h4>리소스</h4><a href="../thinking-tools/">사고 도구</a><a href="mailto:awesome.ai.life@gmail.com">문의하기</a></div>
+        <div class="footer-col"><h4>코스</h4><a href="../elementary/index.html">초등</a><a href="../middle/index.html">중등</a><a href="index.html">고등</a><a href="../teacher/index.html">교사 허브</a></div>
+        <div class="footer-col"><h4>리소스</h4><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact">문의하기</a></div>
       </div>
     </div>
-    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved.</span><span><a href="../index.html" style="color:#64748B;">← 홈으로</a></span></div>
+    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">← 홈으로</a></span></div>
   </div>
 </footer>
 <script src="../js/main.js"></script>

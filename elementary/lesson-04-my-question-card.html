@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 말 질문 만들기 — ailit</title>
+  <meta name="description" content="초등학생이 AI에게 맡기기 전에 자기 말로 질문을 구체화하는 온라인 활동입니다.">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <div class="progress-bar"></div>
+  <header class="site-header">
+    <div class="nav-inner">
+      <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+      <nav class="nav-links"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+      <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+    </div>
+    <nav class="mobile-menu"><a href="index.html" class="active">초등</a><a href="../middle/index.html">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+  </header>
+
+  <section class="hero-sub-page" style="background:linear-gradient(135deg,#0D9488 0%,#1E3A6E 100%);">
+    <div class="container hero-content">
+      <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#CCFBF1;">2주차 탐구 01</span>
+      <h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">내 말 질문 만들기</h1>
+      <p class="hero-sub" style="font-size:16px;">AI에게 바로 맡기기 전에, 내가 알고 싶은 것을 정확한 질문으로 바꿉니다.</p>
+    </div>
+  </section>
+
+  <style>
+    .question-panel{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:24px;box-shadow:0 14px 40px rgba(15,23,42,.08)}
+    .question-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:24px}
+    .question-choice{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:16px;text-align:left;cursor:pointer;min-height:112px}
+    .question-choice strong{display:block;color:var(--dark);font-size:16px;margin-bottom:8px}
+    .question-choice span{font-size:13px;color:var(--gray);line-height:1.7}
+    .question-choice.selected{border-color:var(--teal);background:#CCFBF1}
+    .feedback{margin-top:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;font-size:14px;line-height:1.8;color:var(--gray)}
+    .quiz-line{font-size:20px;line-height:1.7;color:var(--dark);font-weight:900;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:18px}
+    .option-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+    .option-row button{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:14px;font-weight:900;color:var(--dark);cursor:pointer}
+    .option-row button.correct{border-color:var(--teal);background:#CCFBF1;color:#115E59}
+    .option-row button.wrong{border-color:#FDBA74;background:#FFF7ED;color:#9A3412}
+    .build-form{display:grid;gap:14px;margin-top:24px}
+    .build-form label{font-size:14px;font-weight:900;color:var(--dark)}
+    .build-form input,.build-form select{width:100%;margin-top:8px;border:1px solid #CBD5E1;border-radius:8px;padding:12px 14px;font:inherit}
+    .final-question{margin-top:18px;border-radius:8px;border:1px solid #99F6E4;background:#ECFDF5;padding:20px;color:var(--dark);line-height:1.8}
+    .final-question strong{color:#115E59;font-size:18px}
+    @media(max-width:760px){.question-grid,.option-row{grid-template-columns:1fr}}
+  </style>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">1단계</div>
+        <h2 class="section-title">무엇을 알고 싶은지<br>먼저 고르세요.</h2>
+        <p class="section-sub wide">좋은 질문은 “무엇이 궁금한지”가 분명합니다. 아래에서 오늘 묻고 싶은 방향을 하나 골라 보세요.</p>
+      </div>
+      <div class="question-panel fade-up" style="margin-top:28px;">
+        <div class="question-grid" id="topicGrid"></div>
+        <div class="feedback" id="topicOutput">가장 궁금한 방향을 하나 선택해 보세요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section bg-light">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">2단계</div>
+        <h2 class="section-title">흐린 질문을<br>또렷하게 바꿔요.</h2>
+        <p class="section-sub wide">질문이 너무 넓으면 답도 흐려집니다. 더 좋은 질문은 대상, 목적, 원하는 답의 모양이 보입니다.</p>
+      </div>
+      <div class="question-panel fade-up" style="margin-top:28px;">
+        <div class="quiz-line" id="badQuestion">질문을 불러오는 중입니다.</div>
+        <div class="option-row" id="betterOptions"></div>
+        <div class="feedback" id="betterFeedback">더 좋은 질문을 골라 보세요.</div>
+        <button class="btn btn-primary" type="button" id="nextQuestion" style="margin-top:16px;">다음 문제</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="fade-up">
+        <div class="eyebrow teal">3단계</div>
+        <h2 class="section-title">내 질문을<br>완성하세요.</h2>
+        <p class="section-sub wide">아래 칸을 채우면 바로 사용할 수 있는 질문 문장이 만들어집니다. AI에게 묻기 전에도, 친구나 선생님에게 묻기 전에도 쓸 수 있습니다.</p>
+      </div>
+      <div class="question-panel fade-up" style="margin-top:28px;">
+        <div class="build-form">
+          <label>누구를 위한 질문인가요?
+            <select id="forWho">
+              <option>초등학생</option>
+              <option>우리 반 친구들</option>
+              <option>가족</option>
+              <option>나 자신</option>
+            </select>
+          </label>
+          <label>무엇이 궁금한가요?<input id="whatInput" placeholder="예: AI 추천 영상이 왜 계속 비슷하게 나오는지"></label>
+          <label>왜 알고 싶은가요?<input id="whyInput" placeholder="예: 내가 영상을 너무 오래 보지 않게 조절하고 싶어서"></label>
+          <label>어떤 답을 받고 싶나요?
+            <select id="formatInput">
+              <option>쉬운 설명</option>
+              <option>예시 3개</option>
+              <option>표로 정리</option>
+              <option>실천 방법</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" type="button" id="makeQuestion">내 질문 만들기</button>
+          <div class="final-question" id="finalQuestion"><strong>내 질문</strong><br>칸을 채우면 질문이 만들어집니다.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section-sm bg-light">
+    <div class="container" style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="week-01.html" class="btn btn-outline">← 이전</a>
+      <a href="index.html" class="btn btn-outline">초등 코스</a>
+      <a href="lesson-05-family-talk-card.html" class="btn btn-primary">다음 →</a>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="footer-inner"><div class="footer-bottom"><span>© 2026 ailit. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">홈으로</a></span></div></div>
+  </footer>
+
+  <script>
+    const topics = [
+      { title: '알고 싶다', desc: '개념이나 이유를 이해하고 싶을 때 씁니다.', example: 'AI 추천은 왜 비슷한 영상을 보여 줄까?' },
+      { title: '비교하고 싶다', desc: '두 가지의 차이를 알고 싶을 때 씁니다.', example: '검색과 AI 답변은 어떻게 다를까?' },
+      { title: '해결하고 싶다', desc: '문제를 줄이는 방법을 찾고 싶을 때 씁니다.', example: '영상을 오래 보지 않으려면 어떻게 해야 할까?' },
+      { title: '설명하고 싶다', desc: '다른 사람에게 쉽게 말하고 싶을 때 씁니다.', example: '개인정보를 왜 가려야 하는지 친구에게 어떻게 설명할까?' }
+    ];
+    const topicGrid = document.getElementById('topicGrid');
+    topics.forEach((topic) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'question-choice';
+      button.innerHTML = `<strong>${topic.title}</strong><span>${topic.desc}</span>`;
+      button.addEventListener('click', () => {
+        topicGrid.querySelectorAll('button').forEach((item) => item.classList.remove('selected'));
+        button.classList.add('selected');
+        document.getElementById('topicOutput').textContent = `예시 질문: ${topic.example}`;
+      });
+      topicGrid.appendChild(button);
+    });
+
+    const betterQuestions = [
+      {
+        bad: 'AI가 뭐야?',
+        options: ['초등학생이 이해할 수 있게 AI가 하는 일을 예시 3개로 설명해 줘.', 'AI에 대해 전부 알려 줘.'],
+        answer: 0
+      },
+      {
+        bad: '추천 영상 알려 줘.',
+        options: ['내가 좋아할 영상을 계속 추천해 줘.', '추천 영상이 나오는 원리를 초등학생에게 맞게 설명해 줘.'],
+        answer: 1
+      },
+      {
+        bad: '개인정보 알려 줘.',
+        options: ['AI에 넣으면 안 되는 개인정보를 예시와 함께 알려 줘.', '내 친구 개인정보를 정리해 줘.'],
+        answer: 0
+      }
+    ];
+    let betterIndex = 0;
+    function renderBetterQuestion() {
+      const item = betterQuestions[betterIndex];
+      document.getElementById('badQuestion').textContent = `흐린 질문: “${item.bad}”`;
+      const box = document.getElementById('betterOptions');
+      box.innerHTML = '';
+      document.getElementById('betterFeedback').textContent = '더 좋은 질문을 골라 보세요.';
+      item.options.forEach((option, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = option;
+        button.addEventListener('click', () => {
+          box.querySelectorAll('button').forEach((b) => b.classList.remove('correct', 'wrong'));
+          button.classList.add(index === item.answer ? 'correct' : 'wrong');
+          document.getElementById('betterFeedback').textContent = index === item.answer ? '맞아요. 대상과 원하는 답의 모양이 더 분명합니다.' : '다시 생각해요. 좋은 질문은 너무 넓거나 위험한 정보를 요구하지 않습니다.';
+        });
+        box.appendChild(button);
+      });
+    }
+    document.getElementById('nextQuestion').addEventListener('click', () => {
+      betterIndex = (betterIndex + 1) % betterQuestions.length;
+      renderBetterQuestion();
+    });
+
+    document.getElementById('makeQuestion').addEventListener('click', () => {
+      const who = document.getElementById('forWho').value;
+      const what = document.getElementById('whatInput').value.trim();
+      const why = document.getElementById('whyInput').value.trim();
+      const format = document.getElementById('formatInput').value;
+      const output = document.getElementById('finalQuestion');
+      if (!what || !why) {
+        output.innerHTML = '<strong>내 질문</strong><br>궁금한 것과 알고 싶은 이유를 모두 적어 주세요.';
+        return;
+      }
+      output.innerHTML = `<strong>내 질문</strong><br>${who}이 이해할 수 있게 “${what}”에 대해 ${format}으로 알려 줘. 내가 이것을 알고 싶은 이유는 ${why} 때문이야.`;
+    });
+    renderBetterQuestion();
+  </script>
+  <script src="../js/main.js"></script>
+</body>
+</html>

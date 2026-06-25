@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>중등 프롬프트 만들기 — ailit</title>
+  <meta name="description" content="목적, 대상, 조건, 형식을 채워 중등 학습용 프롬프트를 직접 만드는 활동입니다.">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+<div class="progress-bar"></div>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="../index.html" class="nav-logo"><img src="../images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <nav class="nav-links"><a href="../elementary/index.html">초등</a><a href="index.html" class="active">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a><a href="../index.html#contact" class="nav-cta">문의하기</a></nav>
+    <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu"><a href="../elementary/index.html">초등</a><a href="index.html" class="active">중등</a><a href="../high/index.html">고등</a><a href="../teacher/index.html">교사 허브</a><a href="../thinking-tools/index.html">사고 도구</a></nav>
+</header>
+<section class="hero-sub-page" style="background:linear-gradient(135deg,#3B82F6 0%,#1E3A6E 100%);">
+  <div class="container hero-content"><span class="hero-badge" style="background:rgba(255,255,255,.18);color:#DBEAFE;">부록 01</span><h1 class="hero-title" style="font-size:clamp(32px,5vw,50px);">중등 프롬프트 만들기</h1><p class="hero-sub" style="font-size:16px;">AI에게 바로 묻기 전에, 내가 원하는 도움을 정확한 요청으로 바꿉니다.</p></div>
+</section>
+<style>
+  .tool-panel{background:#fff;border:1px solid #E2E8F0;border-radius:8px;padding:24px;box-shadow:0 14px 40px rgba(15,23,42,.08)}
+  .form-grid{display:grid;gap:14px}.form-grid label{font-size:14px;font-weight:900;color:var(--dark)}.form-grid input,.form-grid select,.form-grid textarea{width:100%;margin-top:8px;border:1px solid #CBD5E1;border-radius:8px;padding:12px 14px;font:inherit}.form-grid textarea{min-height:96px;line-height:1.7}
+  .output{margin-top:16px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px;line-height:1.8;color:var(--gray)}
+  .choice-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}.choice-row button{border:2px solid #E2E8F0;background:#fff;border-radius:8px;padding:14px;font-weight:900;cursor:pointer}.choice-row button.correct{border-color:var(--teal);background:#CCFBF1}.choice-row button.wrong{border-color:#FDBA74;background:#FFF7ED}
+  @media(max-width:720px){.choice-row{grid-template-columns:1fr}}
+</style>
+<section class="section">
+  <div class="container">
+    <div class="fade-up"><div class="eyebrow blue">1단계</div><h2 class="section-title">약한 질문을<br>구별해요.</h2><p class="section-sub wide">좋은 프롬프트는 길기만 한 문장이 아닙니다. 목적, 대상, 조건, 답변 형식이 보여야 합니다.</p></div>
+    <div class="tool-panel fade-up" style="margin-top:28px;">
+      <strong id="weakPrompt">“AI에 대해 알려줘.”</strong>
+      <div class="choice-row" id="promptChoices"></div>
+      <div class="output" id="promptFeedback">더 나은 요청을 골라 보세요.</div>
+    </div>
+  </div>
+</section>
+<section class="section bg-light">
+  <div class="container">
+    <div class="fade-up"><div class="eyebrow blue">2단계</div><h2 class="section-title">내 프롬프트를<br>직접 만들어요.</h2></div>
+    <div class="tool-panel fade-up" style="margin-top:28px;">
+      <div class="form-grid">
+        <label>목적<input id="purpose" placeholder="예: 발표 준비, 개념 이해, 토론 준비"></label>
+        <label>대상<select id="audience"><option>중등 학습자가 이해할 수 있게</option><option>친구에게 설명할 수 있게</option><option>발표 자료로 쓸 수 있게</option></select></label>
+        <label>조건<input id="condition" placeholder="예: 출처가 필요한 문장은 따로 표시하기"></label>
+        <label>형식<select id="format"><option>표로 정리해줘</option><option>예시 3개로 설명해줘</option><option>순서대로 설명해줘</option><option>장점과 위험으로 나눠줘</option></select></label>
+        <button class="btn btn-primary" type="button" id="makePrompt">프롬프트 만들기</button>
+        <div class="output" id="promptOutput">칸을 채우면 바로 쓸 수 있는 프롬프트가 만들어집니다.</div>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="section-sm bg-light"><div class="container" style="display:flex;gap:12px;flex-wrap:wrap;"><a href="index.html" class="btn btn-outline">중등 코스</a><a href="appendix-four-label-checklist.html" class="btn btn-primary">다음 →</a></div></section>
+<footer class="site-footer"><div class="footer-inner"><div class="footer-bottom"><span>© 2026 ailit. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="../index.html" style="color:#64748B;">홈으로</a></span></div></div></footer>
+<script>
+const choices=['AI의 뜻을 중등 학습자가 이해할 수 있게 예시 3개와 함께 설명해줘. 출처 확인이 필요한 말은 따로 표시해줘.','AI에 대해 최대한 많이 알려줘.'];
+const box=document.getElementById('promptChoices');
+choices.forEach((text,i)=>{const b=document.createElement('button');b.textContent=text;b.onclick=()=>{box.querySelectorAll('button').forEach(x=>x.className='');b.className=i===0?'correct':'wrong';document.getElementById('promptFeedback').textContent=i===0?'맞아요. 대상, 형식, 확인 조건이 들어 있습니다.':'다시 생각해요. 범위가 너무 넓고 확인 기준이 없습니다.'};box.appendChild(b)});
+document.getElementById('makePrompt').onclick=()=>{const p=purpose.value.trim(), c=condition.value.trim();promptOutput.textContent=p&&c?`${audience.value}, ${p}를 위해 설명해줘. 조건은 “${c}”이고, 답변은 ${format.value}.`:'목적과 조건을 먼저 적어 주세요.'};
+</script>
+<script src="../js/main.js"></script>
+</body>
+</html>

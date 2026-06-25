@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>관리자 — AILIT</title>
+<meta name="description" content="AILIT 회원 DB 및 답변 관리 (관리자 전용).">
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var t=localStorage.getItem('ailit-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<div class="progress-bar"></div>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <nav class="nav-links">
+      <a href="high/index.html">고등</a>
+      <a href="teacher/index.html">교사 허브</a>
+      <a href="account.html">내 계정</a>
+      <a href="login.html" class="nav-cta">로그인</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴"><span></span><span></span><span></span></button>
+  </div>
+  <nav class="mobile-menu">
+    <a href="high/index.html">고등</a>
+    <a href="teacher/index.html">교사 허브</a>
+    <a href="account.html">내 계정</a>
+    <a href="login.html" class="nav-cta">로그인</a>
+  </nav>
+</header>
+
+<section class="hero-sub-page">
+  <div class="container hero-content">
+    <span class="hero-badge" style="background:rgba(255,255,255,.18);color:#DBEAFE;">관리자</span>
+    <h1 class="hero-title" style="font-size:clamp(28px,5vw,42px);">회원 DB 관리</h1>
+    <p class="hero-sub" style="font-size:15px;" id="adminInfo">권한 확인 중...</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div style="display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;">
+      <button class="btn btn-outline btn-sm" id="tabUsers">회원 목록</button>
+      <button class="btn btn-outline btn-sm" id="tabAnswers">답변 목록</button>
+    </div>
+    <div id="panel" class="admin-scroll" style="color:var(--gray);">불러오는 중...</div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="index.html" style="color:#64748B;">← 홈으로</a></span></div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  function esc(s){ return s==null?'':String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  var panel = document.getElementById('panel');
+
+  function renderUsers(users) {
+    if (!users.length) { panel.innerHTML = '<p>회원이 없습니다.</p>'; return; }
+    var rows = users.map(function (u) {
+      return '<tr>' +
+        '<td>' + u.id + '</td>' +
+        '<td>' + esc(u.email) + (u.is_admin ? ' 🛡️' : '') + '</td>' +
+        '<td>' + esc(u.birth_date) + '</td>' +
+        '<td>' + (u.is_minor ? '<span class="tag-minor">14세 미만</span>' : '<span class="tag-adult">성인</span>') + '</td>' +
+        '<td>' + (u.is_minor ? (esc(u.guardian_name) + ' (' + esc(u.guardian_relation) + ') · ' + esc(u.guardian_contact) + (u.guardian_consent ? ' · 동의✅' : ' · 미동의')) : '-') + '</td>' +
+        '<td>' + u.answer_count + '</td>' +
+        '<td>' + esc(u.created_at) + '</td></tr>';
+    }).join('');
+    panel.innerHTML = '<table class="admin-table"><thead><tr>' +
+      '<th>ID</th><th>이메일</th><th>생년월일</th><th>구분</th><th>보호자(법정대리인)</th><th>답변수</th><th>가입일</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function renderAnswers(answers) {
+    if (!answers.length) { panel.innerHTML = '<p>저장된 답변이 없습니다.</p>'; return; }
+    var rows = answers.map(function (a) {
+      return '<tr><td>' + esc(a.email) + '</td><td>' + esc(a.item_key) + '</td>' +
+        '<td>' + esc(a.prompt) + '</td><td style="white-space:pre-wrap;max-width:360px;">' + esc(a.answer) + '</td>' +
+        '<td>' + esc(a.page_url) + '</td><td>' + esc(a.updated_at) + '</td></tr>';
+    }).join('');
+    panel.innerHTML = '<table class="admin-table"><thead><tr>' +
+      '<th>회원</th><th>문항키</th><th>질문</th><th>답변</th><th>페이지</th><th>저장시각</th>' +
+      '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  function loadUsers() { panel.textContent = '불러오는 중...'; fetch('/api/admin/users', { credentials: 'same-origin' }).then(r => r.json()).then(d => renderUsers(d.users || [])); }
+  function loadAnswers() { panel.textContent = '불러오는 중...'; fetch('/api/admin/answers', { credentials: 'same-origin' }).then(r => r.json()).then(d => renderAnswers(d.answers || [])); }
+
+  document.getElementById('tabUsers').addEventListener('click', loadUsers);
+  document.getElementById('tabAnswers').addEventListener('click', loadAnswers);
+
+  // 권한 확인
+  window.AilitAuth.me().then(function (d) {
+    if (!d.user.isAdmin) { document.getElementById('adminInfo').textContent = '관리자 권한이 없습니다.'; panel.innerHTML = '<p>이 페이지는 관리자만 볼 수 있습니다. <a href="account.html" style="color:var(--blue);">내 계정으로</a></p>'; return; }
+    document.getElementById('adminInfo').textContent = d.user.email + ' (관리자)';
+    loadUsers();
+  }).catch(function () { location.href = 'login.html'; });
+})();
+</script>
+<script src="js/auth.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

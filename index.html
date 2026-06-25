@@ -6,7 +6,6 @@
 <title>ailit — AI 리터러시 통합 교육 플랫폼</title>
 <meta name="description" content="초·중·고·교사를 위한 AI 리터러시 통합 교육 플랫폼. AI를 쓰는 법보다 생각하는 법을 먼저 가르칩니다.">
 <link rel="stylesheet" href="css/style.css">
-<!-- 새로고침 후 다크모드 유지 — 렌더 전에 실행해야 FOUC 방지 -->
 <script>
   (function(){
     var t = localStorage.getItem('ailit-theme');
@@ -15,495 +14,197 @@
 </script>
 </head>
 <body>
-
 <div class="progress-bar"></div>
 
-<!-- ── 헤더 ── -->
 <header class="site-header">
   <div class="nav-inner">
-    <a href="index.html" class="nav-logo">ail<span>it</span></a>
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
     <nav class="nav-links">
-      <a href="elementary/">초등</a>
-      <a href="middle/">중학생</a>
-      <a href="high/">고등학생</a>
-      <a href="teacher/">교사 허브</a>
-      <a href="thinking-tools/">사고 도구</a>
-      <a href="mailto:awesome.ai.life@gmail.com" class="nav-cta">문의하기</a>
+      <a href="elementary/index.html">초등</a>
+      <a href="middle/index.html">중등</a>
+      <a href="high/index.html">고등</a>
+      <a href="teacher/index.html">교사 허브</a>
+      <a href="thinking-tools/index.html">사고 도구</a>
+      <a href="login.html">로그인</a>
+      <a href="#contact" class="nav-cta">문의하기</a>
     </nav>
     <button class="theme-toggle" id="themeToggle" aria-label="다크 모드 전환">
-      <!-- 라이트 모드일 때: 달 아이콘 표시 -->
       <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <!-- 다크 모드일 때: 해 아이콘 표시 -->
       <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
-    <button class="nav-toggle" aria-label="메뉴 열기">
-      <span></span><span></span><span></span>
-    </button>
+    <button class="nav-toggle" aria-label="메뉴 열기"><span></span><span></span><span></span></button>
   </div>
   <nav class="mobile-menu">
-    <a href="elementary/">초등 5·6학년</a>
-    <a href="middle/">중학생</a>
-    <a href="high/">고등학생</a>
-    <a href="teacher/">교사 허브</a>
-    <a href="thinking-tools/">사고 도구</a>
-    <a href="mailto:awesome.ai.life@gmail.com" class="nav-cta">문의하기</a>
+    <a href="elementary/index.html">초등 5·6학년</a>
+    <a href="middle/index.html">중등</a>
+    <a href="high/index.html">고등</a>
+    <a href="teacher/index.html">교사 허브</a>
+    <a href="thinking-tools/index.html">사고 도구</a>
+    <a href="login.html">로그인</a>
+    <a href="#contact" class="nav-cta">문의하기</a>
   </nav>
 </header>
 
-<!-- ── 히어로 ── -->
 <section class="hero">
   <div class="container hero-content">
-    <span class="hero-eyebrow">2026 · AI LITERACY PLATFORM</span>
+    <span class="hero-eyebrow">2026 · AI Literacy Platform</span>
     <h1 class="hero-title">AI를 쓰는 법보다,<br>생각하는 법을 먼저.</h1>
-    <p class="hero-sub">초등부터 고등까지, 교사까지. 한국 유일의 3-tier 연속 AI 리터러시 교육 플랫폼.</p>
+    <p class="hero-sub">초등부터 고등까지, 교사까지. AI 답변을 멈추고, 묻고, 따져보고, 설명하는 힘을 기르는 AI 리터러시 교육 플랫폼입니다.</p>
     <div class="hero-actions">
       <a href="#tiers" class="btn btn-primary">학년별 코스 보기</a>
-      <a href="teacher/" class="btn btn-secondary">교사 허브 →</a>
+      <a href="teacher/index.html" class="btn btn-secondary">교사 허브 보기</a>
     </div>
   </div>
 </section>
 
-<!-- ── 학년 선택 ── -->
 <section class="section" id="tiers">
   <div class="container">
     <div class="fade-up">
       <div class="eyebrow">학년별 코스</div>
       <h2 class="section-title">누구를 위한 교육인가.</h2>
-      <p class="section-sub">같은 4단계 루틴을 학년에 맞는 언어로. 초등부터 교사까지 연속된 성장을 설계합니다.</p>
+      <p class="section-sub wide">같은 4단계 사고 루틴을 학년에 맞는 언어와 활동으로 제공합니다. 학생용 코스, 교사용 운영 자료, 공통 사고 도구가 서로 연결됩니다.</p>
     </div>
     <div class="tier-grid fade-up">
-
-      <!-- 초등 -->
       <div class="tier-card">
         <div class="tier-card-bar" style="background:var(--teal)"></div>
         <div class="tier-card-body">
           <div class="tier-card-label c-teal">초등 5·6학년</div>
           <div class="tier-card-tag c-teal">내 말로<br>묻기</div>
           <hr class="tier-divider">
-          <div class="tier-card-tools">
-            카드 활동 · AI 빙고<br>
-            약속 쓰기 · 가정 연계<br>
-            <span style="font-size:11px;color:var(--amber);font-weight:600;">✦ UNESCO 원칙 준수 · AI 직접 사용 없음</span>
-          </div>
+          <div class="tier-card-tools">AI 직접 사용보다 판단 놀이 중심<br>진짜/글쎄 카드 · AI 빙고 · 약속 쓰기</div>
         </div>
-        <div class="tier-card-footer">
-          <a href="elementary/" class="tier-card-link" style="background:var(--bg-green);color:var(--teal);">초등 코스 보기 →</a>
-        </div>
+        <div class="tier-card-footer"><a href="elementary/index.html" class="tier-card-link" style="background:var(--bg-green);color:var(--teal);">초등 코스 보기 →</a></div>
       </div>
-
-      <!-- 중학생 -->
       <div class="tier-card">
         <div class="tier-card-bar" style="background:var(--blue)"></div>
         <div class="tier-card-body">
-          <div class="tier-card-label c-blue">중학생</div>
+          <div class="tier-card-label c-blue">중등</div>
           <div class="tier-card-tag c-blue">근거를<br>나누기</div>
           <hr class="tier-divider">
-          <div class="tier-card-tools">
-            4분법 스티커 분류<br>
-            AI 사용 기록표<br>
-            생각 재구성 프로젝트
-          </div>
+          <div class="tier-card-tools">4분법 분류 · AI 사용 기록표<br>질문 고쳐 쓰기 · 생각 재구성</div>
         </div>
-        <div class="tier-card-footer">
-          <a href="middle/" class="tier-card-link" style="background:var(--bg-light);color:var(--blue);">중학 코스 보기 →</a>
-        </div>
+        <div class="tier-card-footer"><a href="middle/index.html" class="tier-card-link" style="background:var(--bg-light);color:var(--blue);">중등 코스 보기 →</a></div>
       </div>
-
-      <!-- 고등학생 -->
       <div class="tier-card">
         <div class="tier-card-bar" style="background:var(--navy)"></div>
         <div class="tier-card-body">
-          <div class="tier-card-label c-navy">고등학생</div>
+          <div class="tier-card-label c-navy">고등</div>
           <div class="tier-card-tag c-navy">판단을<br>설명하기</div>
           <hr class="tier-divider">
-          <div class="tier-card-tools">
-            5단계 출처 검증<br>
-            허위정보 분석<br>
-            진로 연계 보고서
-          </div>
+          <div class="tier-card-tools">출처 검증 5단계 · 허위정보 분석<br>진로 연계 보고서 · 미니 프로젝트</div>
         </div>
-        <div class="tier-card-footer">
-          <a href="high/" class="tier-card-link" style="background:var(--bg-light);color:var(--navy);">고등 코스 보기 →</a>
-        </div>
+        <div class="tier-card-footer"><a href="high/index.html" class="tier-card-link" style="background:var(--bg-light);color:var(--navy);">고등 코스 보기 →</a></div>
       </div>
-
-      <!-- 교사 -->
       <div class="tier-card">
         <div class="tier-card-bar" style="background:var(--orange)"></div>
         <div class="tier-card-body">
           <div class="tier-card-label c-orange">교사</div>
           <div class="tier-card-tag c-orange">수업으로<br>운영하기</div>
           <hr class="tier-divider">
-          <div class="tier-card-tools">
-            4주 운영안 · 수업안<br>
-            출력형 활동지 · 루브릭<br>
-            안전 가이드
-          </div>
+          <div class="tier-card-tools">4주 운영안 · 수업안 · 활동지<br>안전 가이드 · 루브릭 · 출처 가이드</div>
         </div>
-        <div class="tier-card-footer">
-          <a href="teacher/" class="tier-card-link" style="background:#FFF7ED;color:var(--orange);">교사 허브 보기 →</a>
-        </div>
+        <div class="tier-card-footer"><a href="teacher/index.html" class="tier-card-link" style="background:#FFF7ED;color:var(--orange);">교사 허브 보기 →</a></div>
       </div>
-
     </div>
   </div>
 </section>
 
-<!-- ── 4단계 루틴 ── -->
 <section class="section bg-light" id="routine">
   <div class="container">
     <div class="fade-up">
       <div class="eyebrow teal">핵심 루틴</div>
       <h2 class="section-title">모든 학년이 공유하는<br>4단계 사고 루틴.</h2>
-      <p class="section-sub">학년별 언어만 다르고, 사고의 구조는 동일합니다. 이 연속성이 ailit의 핵심입니다.</p>
+      <p class="section-sub">도구 사용법보다 먼저 필요한 것은 판단의 순서입니다. ailit은 모든 코스에서 같은 루틴을 반복합니다.</p>
     </div>
     <div class="routine-grid fade-up">
-
-      <div class="routine-step">
-        <div class="routine-num" style="background:var(--teal);">01</div>
-        <div class="routine-en c-teal">Stop</div>
-        <div class="routine-ko c-teal">멈추기</div>
-        <p class="routine-desc">AI 답변을 바로 쓰거나 믿지 않는다. 판단을 보류하는 습관.</p>
-      </div>
-
-      <div class="routine-step">
-        <div class="routine-num" style="background:var(--blue);">02</div>
-        <div class="routine-en c-blue">Ask</div>
-        <div class="routine-ko c-blue">묻기</div>
-        <p class="routine-desc">내 말로 알고 싶은 것을 세운다. 질문을 설계하는 힘.</p>
-      </div>
-
-      <div class="routine-step">
-        <div class="routine-num" style="background:var(--navy);">03</div>
-        <div class="routine-en c-navy">Examine</div>
-        <div class="routine-ko c-navy">따져보기</div>
-        <p class="routine-desc">사실·의견·추정·미확인을 나눈다. 비판적 읽기의 4분법.</p>
-      </div>
-
-      <div class="routine-step">
-        <div class="routine-num" style="background:var(--orange);">04</div>
-        <div class="routine-en c-orange">Explain</div>
-        <div class="routine-ko c-orange">설명하기</div>
-        <p class="routine-desc">AI 사용과 내 판단을 구분해 밝힌다. 투명한 사고 기록.</p>
-      </div>
-
+      <div class="routine-step"><div class="routine-num" style="background:var(--teal);">01</div><div class="routine-en c-teal">Stop</div><div class="routine-ko c-teal">멈추기</div><p class="routine-desc">AI 답변을 바로 믿거나 복사하지 않고 판단을 보류합니다.</p></div>
+      <div class="routine-step"><div class="routine-num" style="background:var(--blue);">02</div><div class="routine-en c-blue">Ask</div><div class="routine-ko c-blue">묻기</div><p class="routine-desc">내 목적과 조건을 분명히 하며 질문을 다시 설계합니다.</p></div>
+      <div class="routine-step"><div class="routine-num" style="background:var(--navy);">03</div><div class="routine-en c-navy">Examine</div><div class="routine-ko c-navy">따져보기</div><p class="routine-desc">사실, 추정, 의견, 미확인을 나누고 출처를 확인합니다.</p></div>
+      <div class="routine-step"><div class="routine-num" style="background:var(--orange);">04</div><div class="routine-en c-orange">Explain</div><div class="routine-ko c-orange">설명하기</div><p class="routine-desc">AI가 한 일과 내가 판단한 일을 구분해 기록합니다.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ── 국내 교육 현황 ── -->
-<section class="section" id="context">
+<section class="section" id="tools">
   <div class="container">
     <div class="fade-up">
-      <div class="eyebrow green">국내 교육 현황</div>
-      <h2 class="section-title">지금 학교 현장에<br>무엇이 없는가.</h2>
+      <div class="eyebrow green">공통 사고 도구</div>
+      <h2 class="section-title">수업과 과제에 바로 붙는<br>판단 도구.</h2>
+      <p class="section-sub wide">사고 도구는 학년별 코스와 교사 허브를 이어주는 공통 언어입니다. 학생은 도구로 생각을 남기고, 교사는 그 기록을 바탕으로 피드백합니다.</p>
     </div>
-    <div class="grid-2 fade-up" style="margin-top:40px;">
-
-      <div class="card" style="border-left:4px solid var(--navy);">
-        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:16px;">📋 법제도·정책</div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">2022 개정교육과정</div>
-            <div style="font-size:13px;color:var(--gray);">정보 교과 <strong>34시간/년 의무화</strong> (초 17h·중 34h). AI 교육 명시 포함.</div>
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">교육부 AI 교육 5개년</div>
-            <div style="font-size:13px;color:var(--gray);">2025년까지 AI 교육 전면 확산. 교원 역량 강화 목표 포함.</div>
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">시도교육청 가이드</div>
-            <div style="font-size:13px;color:var(--gray);">경북·서울 등 사례집 배포 중 — 도구 사용법 중심.</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card" style="border-left:4px solid var(--red);">
-        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:16px;">⚠️ 현장의 공백</div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">제작자 중심 편향</div>
-            <div style="font-size:13px;color:var(--gray);">AI 만들기는 있어도, AI 답변 '판단하기'는 없다.</div>
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">교사 역량 부족</div>
-            <div style="font-size:13px;color:var(--gray);">AI 리터러시 수업 경험 없는 교사 <strong>82%</strong> (2024 교총 조사).</div>
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--dark);margin-bottom:3px;">루브릭·연속성 부재</div>
-            <div style="font-size:13px;color:var(--gray);">수행평가 기준도, 초·중·고 연결 커리큘럼도 국내에 없다.</div>
-          </div>
-        </div>
-      </div>
-
+    <div class="grid-3 fade-up" style="margin-top:40px;">
+      <a href="thinking-tools/index.html" class="sitemap-card" style="color:var(--green);"><div class="sitemap-card-bar" style="background:var(--green);"></div><div><div class="sitemap-card-url">사고 도구</div><div class="sitemap-card-desc">진짜/글쎄 카드, 4분법, 개인정보 가리기, AI 사용 기록표</div></div></a>
+      <a href="teacher/index.html" class="sitemap-card" style="color:var(--orange);"><div class="sitemap-card-bar" style="background:var(--orange);"></div><div><div class="sitemap-card-url">교사 허브</div><div class="sitemap-card-desc">4주 운영안, 수업안, 활동지, 안전 가이드, 루브릭 샘플</div></div></a>
+      <a href="high/index.html" class="sitemap-card" style="color:var(--navy);"><div class="sitemap-card-bar" style="background:var(--navy);"></div><div><div class="sitemap-card-url">고등 코스</div><div class="sitemap-card-desc">검증, 윤리, 허위정보, 진로 변화까지 깊게 다루는 12강</div></div></a>
     </div>
   </div>
 </section>
 
-<!-- ── 연구 근거 ── -->
-<section class="section bg-light" id="research">
-  <div class="container">
-    <div class="fade-up">
-      <div class="eyebrow green">연구 근거</div>
-      <h2 class="section-title">왜 '생각하는 법'이<br>먼저여야 하는가.</h2>
-    </div>
-    <div class="research-grid fade-up">
-
-      <div class="research-card">
-        <span class="research-badge" style="background:#DCFCE7;color:var(--green);">✓ 동료심사 완료</span>
-        <div class="research-author c-green">Gerlich, 2025</div>
-        <div class="research-journal">Societies (MDPI) · n=666</div>
-        <hr class="research-divider">
-        <div class="research-finding">AI 의존도가 높을수록 비판적 사고 점수가 유의미하게 낮음 (p&lt;.001). 고의존군 평균 <strong>20% 하락</strong>.</div>
-        <div class="research-note c-green">→ AI를 쓸수록 판단력이 약해질 수 있다. '생각하는 법' 훈련이 먼저 필요한 이유.</div>
-      </div>
-
-      <div class="research-card">
-        <span class="research-badge" style="background:#FFFBEB;color:var(--amber);">⚠ 프리프린트 (미심사)</span>
-        <div class="research-author c-amber">Kosmyna et al., 2025</div>
-        <div class="research-journal">MIT CSAIL · arXiv:2506.08872</div>
-        <hr class="research-divider">
-        <div class="research-finding">AI 보조 글쓰기 시 EEG 뇌파 활동 현저히 감소. 창의성·참여도 지표도 저하.</div>
-        <div class="research-note" style="color:var(--amber);font-style:italic;">주의: 동료심사 미완료 프리프린트. 참고 수준으로만 인용.</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ── 왜 ailit인가 (비교) ── -->
-<section class="section" id="why">
-  <div class="container">
-    <div class="fade-up">
-      <div class="eyebrow blue">경쟁 차별화</div>
-      <h2 class="section-title">우리만이<br>할 수 있는 것.</h2>
-    </div>
-    <div class="compare-wrap fade-up">
-      <table class="compare-table">
-        <thead>
-          <tr>
-            <th class="col-item"></th>
-            <th>교육부 무료 자료</th>
-            <th>지역 사례집</th>
-            <th class="col-ailit">ailit ✦</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="col-item">대상</td>
-            <td class="no">전학년 혼재</td>
-            <td class="no">초등 중심</td>
-            <td class="col-ailit">3-tier 연속 설계 ✦</td>
-          </tr>
-          <tr>
-            <td class="col-item">교육 철학</td>
-            <td class="no">도구 사용법</td>
-            <td class="no">제작자 중심</td>
-            <td class="col-ailit">판단자 중심 ✦</td>
-          </tr>
-          <tr>
-            <td class="col-item">루브릭 제공</td>
-            <td class="no">없음</td>
-            <td class="no">없음</td>
-            <td class="col-ailit">수행평가용 포함 ✦</td>
-          </tr>
-          <tr>
-            <td class="col-item">교사 지원</td>
-            <td class="no">설치 가이드</td>
-            <td class="no">단편 수업안</td>
-            <td class="col-ailit">풀코스 허브 ✦</td>
-          </tr>
-          <tr>
-            <td class="col-item">연구 근거</td>
-            <td class="no">없음</td>
-            <td class="no">없음</td>
-            <td class="col-ailit">Gerlich 2025 등 ✦</td>
-          </tr>
-          <tr>
-            <td class="col-item">인터랙티브</td>
-            <td class="no">별도 앱 이동</td>
-            <td class="no">오프라인 중심</td>
-            <td class="col-ailit">통합 웹 활동 ✦</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</section>
-
-<!-- ── 사이트 구조 ── -->
 <section class="section bg-light" id="structure">
   <div class="container">
     <div class="fade-up">
       <div class="eyebrow navy">사이트 구조</div>
-      <h2 class="section-title">하나의 사이트,<br>네 개의 문.</h2>
+      <h2 class="section-title">하나의 사이트,<br>여섯 개의 입구.</h2>
     </div>
-    <div class="sitemap-grid fade-up" style="margin-top:40px;">
-
-      <a href="index.html" class="sitemap-card" style="color:var(--gray);">
-        <div class="sitemap-card-bar" style="background:var(--gray-light);"></div>
-        <div>
-          <div class="sitemap-card-url">/ 홈</div>
-          <div class="sitemap-card-desc">학년 선택 · 4주 안내 · 자가진단</div>
-        </div>
-      </a>
-
-      <a href="elementary/" class="sitemap-card" style="color:var(--teal);">
-        <div class="sitemap-card-bar" style="background:var(--teal);"></div>
-        <div>
-          <div class="sitemap-card-url">elementary/</div>
-          <div class="sitemap-card-desc">12탐구 · 4놀이 미션 · 가정 카드</div>
-        </div>
-      </a>
-
-      <a href="middle/" class="sitemap-card" style="color:var(--blue);">
-        <div class="sitemap-card-bar" style="background:var(--blue);"></div>
-        <div>
-          <div class="sitemap-card-url">middle/</div>
-          <div class="sitemap-card-desc">12미션 · 4주 활동 · 재구성 프로젝트</div>
-        </div>
-      </a>
-
-      <a href="high/" class="sitemap-card" style="color:var(--navy);">
-        <div class="sitemap-card-bar" style="background:var(--navy);"></div>
-        <div>
-          <div class="sitemap-card-url">high/</div>
-          <div class="sitemap-card-desc">12강 · 4활동 · 최종 프로젝트</div>
-        </div>
-      </a>
-
-      <a href="teacher/" class="sitemap-card" style="color:var(--orange);">
-        <div class="sitemap-card-bar" style="background:var(--orange);"></div>
-        <div>
-          <div class="sitemap-card-url">teacher/</div>
-          <div class="sitemap-card-desc">운영안 · 활동지 · 루브릭 · 가이드</div>
-        </div>
-      </a>
-
-      <a href="thinking-tools/" class="sitemap-card" style="color:var(--green);">
-        <div class="sitemap-card-bar" style="background:var(--green);"></div>
-        <div>
-          <div class="sitemap-card-url">thinking-tools/</div>
-          <div class="sitemap-card-desc">멈춤 카드 · 질문 카드 · 기록표</div>
-        </div>
-      </a>
-
+    <div class="sitemap-grid fade-up">
+      <a href="index.html" class="sitemap-card" style="color:var(--gray);"><div class="sitemap-card-bar" style="background:var(--gray-light);"></div><div><div class="sitemap-card-url">홈</div><div class="sitemap-card-desc">학년 선택 · 핵심 루틴 · 도입 안내</div></div></a>
+      <a href="elementary/index.html" class="sitemap-card" style="color:var(--teal);"><div class="sitemap-card-bar" style="background:var(--teal);"></div><div><div class="sitemap-card-url">초등</div><div class="sitemap-card-desc">초등 5·6학년 활동형 코스</div></div></a>
+      <a href="middle/index.html" class="sitemap-card" style="color:var(--blue);"><div class="sitemap-card-bar" style="background:var(--blue);"></div><div><div class="sitemap-card-url">중등</div><div class="sitemap-card-desc">중등 분류·기록 중심 코스</div></div></a>
+      <a href="high/index.html" class="sitemap-card" style="color:var(--navy);"><div class="sitemap-card-bar" style="background:var(--navy);"></div><div><div class="sitemap-card-url">고등</div><div class="sitemap-card-desc">고등 검증·보고서 코스</div></div></a>
+      <a href="teacher/index.html" class="sitemap-card" style="color:var(--orange);"><div class="sitemap-card-bar" style="background:var(--orange);"></div><div><div class="sitemap-card-url">교사 허브</div><div class="sitemap-card-desc">교사 수업 운영 자료와 샘플</div></div></a>
+      <a href="thinking-tools/index.html" class="sitemap-card" style="color:var(--green);"><div class="sitemap-card-bar" style="background:var(--green);"></div><div><div class="sitemap-card-url">사고 도구</div><div class="sitemap-card-desc">공통 사고 도구 모음</div></div></a>
     </div>
   </div>
 </section>
 
-<!-- ── 사업 모델 요약 ── -->
 <section class="section" id="model">
   <div class="container">
     <div class="fade-up">
-      <div class="eyebrow orange">사업 모델</div>
-      <h2 class="section-title">기관·학교·출판사를 위한<br>맞춤형 도입.</h2>
-      <p class="section-sub wide">학교 단위 라이선스, 교사 패키지, 출판 연계, 교원 연수 4가지 경로로 도입할 수 있습니다.</p>
+      <div class="eyebrow orange">기관 도입</div>
+      <h2 class="section-title">학교와 기관에서<br>바로 도입할 수 있게.</h2>
+      <p class="section-sub wide">콘텐츠 라이선스, 교사용 패키지, 출판 연계, 교원 연수로 확장 가능한 구조입니다.</p>
     </div>
-    <div class="grid-2 fade-up" style="margin-top:40px;gap:20px;">
-
-      <div class="card" style="display:flex;gap:18px;align-items:flex-start;">
-        <div style="font-size:32px;flex-shrink:0;">📦</div>
-        <div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <strong style="font-size:15px;">콘텐츠 라이선스</strong>
-            <span style="font-size:11px;font-weight:700;color:var(--navy);background:var(--bg-light);padding:2px 8px;border-radius:100px;">B2B</span>
-          </div>
-          <p style="font-size:13px;color:var(--gray);">학교·기관 연간 이용권. 학급 수·학교급별 차등 요금제.</p>
-        </div>
-      </div>
-
-      <div class="card" style="display:flex;gap:18px;align-items:flex-start;">
-        <div style="font-size:32px;flex-shrink:0;">👩‍🏫</div>
-        <div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <strong style="font-size:15px;">교사용 패키지</strong>
-            <span style="font-size:11px;font-weight:700;color:var(--navy);background:var(--bg-light);padding:2px 8px;border-radius:100px;">B2B</span>
-          </div>
-          <p style="font-size:13px;color:var(--gray);">활동지·루브릭·운영안 PDF. 학기별 업데이트 포함.</p>
-        </div>
-      </div>
-
-      <div class="card" style="display:flex;gap:18px;align-items:flex-start;border-color:var(--orange);">
-        <div style="font-size:32px;flex-shrink:0;">📚</div>
-        <div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <strong style="font-size:15px;">출판 연계 ★</strong>
-            <span style="font-size:11px;font-weight:700;color:var(--orange);background:#FFF7ED;padding:2px 8px;border-radius:100px;">B2B 핵심</span>
-          </div>
-          <p style="font-size:13px;color:var(--gray);">검인정 교과서·부교재 시장. 학교 도서관·학원 교재 채널.</p>
-        </div>
-      </div>
-
-      <div class="card" style="display:flex;gap:18px;align-items:flex-start;">
-        <div style="font-size:32px;flex-shrink:0;">🎓</div>
-        <div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <strong style="font-size:15px;">연수 프로그램</strong>
-            <span style="font-size:11px;font-weight:700;color:var(--teal);background:var(--bg-green);padding:2px 8px;border-radius:100px;">B2G</span>
-          </div>
-          <p style="font-size:13px;color:var(--gray);">교원 직무연수 15h/30h. 시도교육청 위탁 가능.</p>
-        </div>
-      </div>
-
+    <div class="grid-2 fade-up" style="margin-top:40px;">
+      <div class="card"><strong>콘텐츠 라이선스</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">학교·기관 단위로 학생용 코스와 교사용 자료를 제공하는 방식입니다.</p></div>
+      <div class="card"><strong>교원 연수</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">15시간·30시간 과정으로 AI 리터러시 수업 설계와 평가를 다룹니다.</p></div>
+      <div class="card"><strong>출판 연계</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">교재, 활동지, 부교재, 수행평가 자료로 변환할 수 있습니다.</p></div>
+      <div class="card"><strong>학교 맞춤 운영</strong><p style="font-size:13px;color:var(--gray);margin-top:8px;">학년, 과목, 차시 수, AI 사용 정책에 맞춰 조정할 수 있습니다.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ── 문의 CTA ── -->
 <section class="section bg-light" id="contact">
   <div class="container">
     <div class="cta-banner fade-up">
       <div class="cta-content">
-        <h2 class="cta-title">AI 리터러시 교육 시스템을 도입하고 싶다면</h2>
-        <p class="cta-sub">파일럿 프로그램를 신청하세요.</p>
+        <h2 class="cta-title">우리 학교에 도입하고 싶다면.</h2>
+        <p class="cta-sub">파일럿 학교를 모집 중입니다. 교사 허브와 사고 도구를 먼저 확인해보세요.</p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-          <a href="mailto:awesome.ai.life@gmail.com" class="btn btn-primary">이메일로 문의하기</a>
-          <a href="teacher/" class="btn btn-secondary">교사 허브 먼저 보기</a>
+          <a href="mailto:contact@ailiteracy.or.kr" class="btn btn-primary">이메일로 문의하기</a>
+          <a href="teacher/index.html" class="btn btn-secondary">교사 허브 보기</a>
         </div>
-        <p style="color:#94A3B8;font-size:12px;margin-top:20px;">ailit · 2026 · awesome.ai.life@gmail.com</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── 푸터 ── -->
 <footer class="site-footer">
   <div class="footer-inner">
     <div class="footer-top">
       <div>
-        <div class="footer-logo">ail<span>it</span></div>
+        <div class="footer-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></div>
         <div class="footer-tagline">AI 리터러시 통합 교육 플랫폼</div>
-        <div style="margin-top:8px;font-size:13px;color:#475569;">팩트와 균형 잡힌 이야기만이 살아남는다.</div>
       </div>
       <div class="footer-links">
-        <div class="footer-col">
-          <h4>코스</h4>
-          <a href="elementary/">초등 5·6학년</a>
-          <a href="middle/">중학생</a>
-          <a href="high/">고등학생</a>
-          <a href="teacher/">교사 허브</a>
-        </div>
-        <div class="footer-col">
-          <h4>리소스</h4>
-          <a href="thinking-tools/">사고 도구</a>
-          <a href="#research">연구 근거</a>
-          <a href="#why">경쟁 비교</a>
-        </div>
-        <div class="footer-col">
-          <h4>기관 도입</h4>
-          <a href="#model">사업 모델</a>
-          <a href="mailto:awesome.ai.life@gmail.com">문의하기</a>
-        </div>
+        <div class="footer-col"><h4>코스</h4><a href="elementary/index.html">초등</a><a href="middle/index.html">중등</a><a href="high/index.html">고등</a><a href="teacher/index.html">교사 허브</a></div>
+        <div class="footer-col"><h4>리소스</h4><a href="thinking-tools/index.html">사고 도구</a><a href="#structure">사이트 구조</a><a href="#contact">문의하기</a></div>
       </div>
     </div>
-    <div class="footer-bottom">
-      <span>© 2026 ailit. All rights reserved.</span>
-      <span>초·중·고·교사 통합 AI 리터러시 교육 플랫폼</span>
-    </div>
+    <div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span>초·중·고·교사 통합 AI 리터러시 교육 플랫폼</span></div>
   </div>
 </footer>
 
+<script src="js/auth.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>
