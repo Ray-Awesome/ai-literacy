@@ -115,6 +115,8 @@ CREATE TABLE IF NOT EXISTS newsletter_deliveries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_newsletter_deliveries_send_status ON newsletter_deliveries(send_id, status);
+CREATE INDEX IF NOT EXISTS idx_newsletter_deliveries_queue_claim
+  ON newsletter_deliveries(send_id, status, queued_at, queue_claim_key);
 
 CREATE TABLE IF NOT EXISTS newsletter_webhook_events (
   svix_id           TEXT    PRIMARY KEY,

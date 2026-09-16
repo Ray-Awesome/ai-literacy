@@ -15,6 +15,8 @@ test('0001 through 0004 upgrades the Task-1 users/answers schema to every runtim
     const sends = await db.prepare('PRAGMA table_info(newsletter_sends)').all();
     for (const name of ['queued_at', 'queue_claim_key', 'queue_claimed_at']) assert.ok(deliveries.results.some((row) => row.name === name));
     assert.ok(sends.results.some((row) => row.name === 'source_send_id'));
+    const indexes = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_newsletter_deliveries_queue_claim'").all();
+    assert.equal(indexes.results.length, 1);
   } finally { await mf.dispose(); }
 });
 

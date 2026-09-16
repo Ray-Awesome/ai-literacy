@@ -253,20 +253,18 @@ delivery, and webhook data is limited to authorized administrators.
 
 Purge confirmation challenges and confirmation-delivery state after 30 days;
 purge delivery error details and webhook event payload metadata after 90 days;
-retain aggregate newsletter/send counts for 24 months. Retain `unsubscribed`,
+retain immutable newsletter content, send aggregates, recipient-target history,
+and provider delivery IDs for 24 months after a terminal send. After 24 months,
+purge terminal send/delivery rows and an old sent/failed newsletter with no
+remaining sends; drafts remain under editorial control. Retain `unsubscribed`,
 `bounced`, and `complained` subscriber email/status records indefinitely as the
 minimal anti-resend suppression record, unless a superseding legal deletion
-request requires an approved exception process. Run the following only in an
-approved maintenance window after backup and policy-owner sign-off (the local
-equivalents are safe to rehearse with `--local`):
-
-```sql
-DELETE FROM newsletter_confirmation_challenges WHERE created_at < datetime('now', '-30 days');
-DELETE FROM newsletter_confirmation_delivery_state WHERE updated_at < datetime('now', '-30 days');
-DELETE FROM newsletter_webhook_events WHERE created_at < datetime('now', '-90 days');
-UPDATE newsletter_deliveries SET error_code = NULL, error_message = NULL
-WHERE updated_at < datetime('now', '-90 days');
-```
+request requires an approved exception process. Run the ordered,
+foreign-key-safe transaction in [`newsletter-retention.sql`](newsletter-retention.sql)
+only in an approved maintenance window after backup and policy-owner sign-off.
+It deletes old delivery targets, severs a newer retry's `source_send_id` to an
+expiring source, then deletes old terminal sends and unreferenced old editorial
+content. It never deletes suppression subscriber rows.
 
 Production retention enablement is blocked until the privacy-policy owner
 approves these durations and the maintenance procedure. Restrict exports and
