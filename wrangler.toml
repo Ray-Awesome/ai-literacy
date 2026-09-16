@@ -1,0 +1,15 @@
+name = "ailiteracy"
+compatibility_date = "2026-09-16"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "./dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ailit-db"
+database_id = "814df798-02f0-46d0-be2f-773980be4076"
+
+[vars]
+ADMIN_EMAIL = ""
+
+[observability]
+enabled = true
