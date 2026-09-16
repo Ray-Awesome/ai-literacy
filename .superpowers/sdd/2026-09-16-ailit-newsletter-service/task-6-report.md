@@ -23,6 +23,10 @@ Implemented and locally verified. No queue, remote D1, Resend request, deploymen
 
 `npx wrangler deploy --dry-run --config worker/wrangler.toml` completed its local Worker configuration/bundle validation. The command could not write its optional user-preferences debug log in the sandbox. Pages’ `wrangler pages deploy` has no `--dry-run` option, so it was not run as a deployment.
 
+## Commit
+
+`76db7b7 feat: deliver newsletters through Cloudflare Queues`
+
 ## Concern
 
 An existing deployed D1 database will need the corresponding additive `queued_at` column migration before this code is deployed. No remote D1 operation was performed here.
