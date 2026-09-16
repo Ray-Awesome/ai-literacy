@@ -107,6 +107,15 @@ test('expired confirmation tokens are rejected', async (context) => {
   assert.equal(context.env.rows.subscribers[0].status, 'pending');
 });
 
+test('confirmation cannot activate after its presented challenge disappears during validation', async (context) => {
+  const { env } = context;
+  const raw = await env.seedPending('reader@example.com');
+  env.DB.onChallengeValidation = () => { env.rows.challenges = []; };
+  const response = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${raw}`), env });
+  assert.match(response.headers.get('Location'), /state=invalid/);
+  assert.equal(env.rows.subscribers[0].status, 'pending');
+});
+
 test('a pending confirmation from the prior single-hash format remains usable', async (context) => {
   const raw = await context.env.seedLegacyPending('reader@example.com');
   const response = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${raw}`), env: context.env });
@@ -121,10 +130,10 @@ test('resending a pending confirmation issues a fresh usable challenge', async (
   const newToken = confirmationTokenFrom(env);
   assert.equal(response.status, 202);
   assert.notEqual(newToken, oldToken);
-  const newConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${newToken}`), env });
-  assert.match(newConfirmation.headers.get('Location'), /state=confirmed/);
   const oldConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${oldToken}`), env });
   assert.match(oldConfirmation.headers.get('Location'), /state=invalid/);
+  const newConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${newToken}`), env });
+  assert.match(newConfirmation.headers.get('Location'), /state=confirmed/);
 });
 
 test('unsubscribe GET is idempotent and does not expose the email in the redirect', async (context) => {
@@ -206,6 +215,25 @@ test('provider failure leaves an earlier delivered confirmation token usable', a
   assert.match(confirmation.headers.get('Location'), /state=confirmed/);
 });
 
+test('an earlier successful delivery cannot retire a newer concurrent challenge', async (context) => {
+  const { env } = context;
+  await env.seedPending('reader@example.com');
+  const deliveries = [];
+  globalThis.fetch = async (_url, init) => {
+    env.sentEmails.push(JSON.parse(init.body));
+    return new Promise((resolve) => deliveries.push(resolve));
+  };
+  await resendConfirmation(publicContext(env, jsonRequest('/api/newsletter/resend-confirmation', { email: 'reader@example.com' })));
+  await resendConfirmation(publicContext(env, jsonRequest('/api/newsletter/resend-confirmation', { email: 'reader@example.com' })));
+  const [firstWork, secondWork] = env.scheduled;
+  deliveries[0](new Response(JSON.stringify({ id: 'first' }), { status: 200 }));
+  await firstWork;
+  assert.equal(env.rows.challenges.length, 3);
+  deliveries[1](new Response(JSON.stringify({ id: 'second' }), { status: 200 }));
+  await secondWork;
+  assert.equal(env.rows.challenges.length, 1);
+});
+
 test('JSON null and arrays receive safe public responses', async (context) => {
   const { env } = context;
   const nullRequest = new Request('https://site.test/api/newsletter/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'null' });
@@ -231,7 +259,7 @@ test('one-click unsubscribe rejects invalid RFC 8058 request bodies before mutat
 test('a concurrent activation cannot schedule a confirmation challenge that D1 did not store', async (context) => {
   const { env } = context;
   const subscriber = env.seedSubscriber('reader@example.com', 'pending');
-  env.DB.onFirst = () => { subscriber.status = 'active'; };
+  env.DB.onSubscriberUpsert = () => { subscriber.status = 'active'; };
   const response = await subscribeAndDrain(env, { email: subscriber.email, consent: true });
   assert.equal(response.status, 202);
   assert.equal(env.sentEmails.length, 0);
@@ -244,4 +272,26 @@ test('subscription schedules mail outside the public response and scheduled work
   assert.equal(env.scheduled.length, 1);
   await env.drainScheduled();
   assert.equal(env.sentEmails.length, 1);
+});
+
+test('resend performs the same public D1 operation shape for pending and unknown emails', async () => {
+  const pending = makeEnv();
+  await pending.seedPending('reader@example.com');
+  pending.DB.operations = [];
+  const unknown = makeEnv();
+  globalThis.fetch = async () => new Promise(() => {});
+  await resendConfirmation(publicContext(pending, jsonRequest('/api/newsletter/resend-confirmation', { email: 'reader@example.com' })));
+  await resendConfirmation(publicContext(unknown, jsonRequest('/api/newsletter/resend-confirmation', { email: 'unknown@example.com' })));
+  assert.deepEqual(pending.DB.operations, unknown.DB.operations);
+});
+
+test('subscribe performs the same public D1 operation shape for pending and unknown emails', async () => {
+  const pending = makeEnv();
+  await pending.seedPending('reader@example.com');
+  pending.DB.operations = [];
+  const unknown = makeEnv();
+  globalThis.fetch = async () => new Promise(() => {});
+  await subscribe(publicContext(pending, jsonRequest('/api/newsletter/subscribe', { email: 'reader@example.com', consent: true })));
+  await subscribe(publicContext(unknown, jsonRequest('/api/newsletter/subscribe', { email: 'unknown@example.com', consent: true })));
+  assert.deepEqual(pending.DB.operations, unknown.DB.operations);
 });

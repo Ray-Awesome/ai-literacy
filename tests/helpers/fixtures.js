@@ -14,7 +14,7 @@ export function jsonRequest(path, body, options = {}) {
 }
 
 export function makeEnv() {
-  const rows = { subscribers: [], challenges: [] };
+  const rows = { subscribers: [], challenges: [], deliveryStates: [] };
   const db = new FakeD1(rows);
   const env = {
     DB: db,
@@ -35,7 +35,6 @@ export function makeEnv() {
     const token = await newConfirmationToken();
     rows.subscribers.push({
       id: db.nextSubscriberId++, email, status: 'pending', consent_at: '2026-09-16 00:00:00',
-      confirmation_token_hash: token.hash, confirmation_expires_at: expiration,
     });
     rows.challenges.push({ subscriber_id: db.nextSubscriberId - 1, token_hash: token.hash, expires_at: expiration });
     return token.raw;

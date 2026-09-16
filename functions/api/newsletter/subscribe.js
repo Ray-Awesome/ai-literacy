@@ -1,7 +1,7 @@
 import { EMAIL_RE, json } from '../../../lib/auth.js';
 import { newsletterConfig } from '../../../lib/newsletter/config.js';
 import { consumeRateLimit } from '../../../lib/newsletter/rate-limit.js';
-import { sendEmail } from '../../../lib/newsletter/resend.js';
+import { retirePriorChallenges, sendEmail } from '../../../lib/newsletter/resend.js';
 import { newConfirmationToken, sha256 } from '../../../lib/newsletter/tokens.js';
 
 const GENERIC_MESSAGE = '확인할 수 있는 경우 구독 안내 메일을 보냈습니다.';
@@ -36,67 +36,34 @@ function confirmationMessage(config, email, token, id) {
   };
 }
 
-function scheduleConfirmation(waitUntil, env, message) {
-  const work = sendEmail(env, message).catch(() => undefined);
+function scheduleConfirmation(waitUntil, env, message, subscriberId, tokenHash) {
+  const work = sendEmail(env, message).then(
+    () => retirePriorChallenges(env, subscriberId, tokenHash),
+    () => undefined,
+  ).catch(() => undefined);
   if (typeof waitUntil === 'function') waitUntil(work);
 }
 
-async function pendingSubscriber(env, email) {
-  let subscriber = await env.DB.prepare('SELECT id, status FROM newsletter_subscribers WHERE email = ?').bind(email).first();
-  if (subscriber?.status === 'active') return null;
-
-  if (subscriber) {
-    const wasPending = subscriber.status === 'pending';
-    if (!wasPending) {
-      await env.DB.prepare('DELETE FROM newsletter_confirmation_challenges WHERE subscriber_id = ?').bind(subscriber.id).run();
-    }
-    const changed = await env.DB.prepare(wasPending ? `
-      UPDATE newsletter_subscribers
-      SET status = 'pending', consent_at = datetime('now'), confirmed_at = NULL, updated_at = datetime('now')
-      WHERE id = ? AND status <> 'active'
-    ` : `
-      UPDATE newsletter_subscribers
-      SET status = 'pending', consent_at = datetime('now'), confirmed_at = NULL,
-          confirmation_token_hash = NULL, confirmation_expires_at = NULL, updated_at = datetime('now')
-      WHERE id = ? AND status <> 'active'
-    `).bind(subscriber.id).run();
-    if (changed.meta?.changes !== 1) return null;
-    return subscriber;
-  }
-
-  const inserted = await env.DB.prepare(`
-    INSERT INTO newsletter_subscribers (email, status, consent_at)
-    VALUES (?, 'pending', datetime('now'))
-  `).bind(email).run();
-  subscriber = await env.DB.prepare('SELECT id, status FROM newsletter_subscribers WHERE email = ?').bind(email).first();
-  if (!subscriber || subscriber.status === 'active') return null;
-  if (inserted.meta?.changes !== 1) {
-    const wasPending = subscriber.status === 'pending';
-    if (!wasPending) {
-      await env.DB.prepare('DELETE FROM newsletter_confirmation_challenges WHERE subscriber_id = ?').bind(subscriber.id).run();
-    }
-    const changed = await env.DB.prepare(wasPending ? `
-      UPDATE newsletter_subscribers
-      SET status = 'pending', consent_at = datetime('now'), confirmed_at = NULL, updated_at = datetime('now')
-      WHERE id = ? AND status <> 'active'
-    ` : `
-      UPDATE newsletter_subscribers
-      SET status = 'pending', consent_at = datetime('now'), confirmed_at = NULL,
-          confirmation_token_hash = NULL, confirmation_expires_at = NULL, updated_at = datetime('now')
-      WHERE id = ? AND status <> 'active'
-    `).bind(subscriber.id).run();
-    if (changed.meta?.changes !== 1) return null;
-  }
-  return subscriber;
-}
-
 async function createChallenge(env, email, token) {
-  return env.DB.prepare(`
+  const challenge = await env.DB.prepare(`
     INSERT INTO newsletter_confirmation_challenges (token_hash, subscriber_id, expires_at)
     SELECT ?, id, datetime('now', '+24 hours')
     FROM newsletter_subscribers
     WHERE email = ? AND status = 'pending'
-  `).bind(token.hash, email).run();
+    RETURNING subscriber_id
+  `).bind(token.hash, email).first();
+  const state = await env.DB.prepare(`
+    INSERT INTO newsletter_confirmation_delivery_state (subscriber_id, current_token_hash)
+    SELECT id, ? FROM newsletter_subscribers
+    WHERE email = ? AND status = 'pending'
+      AND EXISTS (
+        SELECT 1 FROM newsletter_confirmation_challenges
+        WHERE subscriber_id = newsletter_subscribers.id AND token_hash = ?
+      )
+    ON CONFLICT(subscriber_id) DO UPDATE SET
+      current_token_hash = excluded.current_token_hash, updated_at = datetime('now')
+  `).bind(token.hash, email, token.hash).run();
+  return state.meta?.changes === 1 ? challenge : null;
 }
 
 export async function onRequestPost({ request, env, waitUntil }) {
@@ -109,13 +76,30 @@ export async function onRequestPost({ request, env, waitUntil }) {
   if (await rateLimited(request, env, email)) return json({ message: GENERIC_MESSAGE }, 202);
 
   try {
-    const subscriber = await pendingSubscriber(env, email);
-    if (!subscriber) return json({ message: GENERIC_MESSAGE }, 202);
+    await env.DB.prepare(`
+      DELETE FROM newsletter_confirmation_challenges
+      WHERE subscriber_id IN (
+        SELECT id FROM newsletter_subscribers WHERE email = ? AND status <> 'pending'
+      )
+    `).bind(email).run();
+    const subscriber = await env.DB.prepare(`
+      INSERT INTO newsletter_subscribers (email, status, consent_at)
+      VALUES (?, 'pending', datetime('now'))
+      ON CONFLICT(email) DO UPDATE SET
+        status = CASE WHEN newsletter_subscribers.status = 'active' THEN 'active' ELSE 'pending' END,
+        consent_at = CASE WHEN newsletter_subscribers.status = 'active' THEN newsletter_subscribers.consent_at ELSE excluded.consent_at END,
+        confirmed_at = CASE WHEN newsletter_subscribers.status IN ('pending', 'active') THEN newsletter_subscribers.confirmed_at ELSE NULL END,
+        confirmation_token_hash = CASE WHEN newsletter_subscribers.status IN ('pending', 'active') THEN newsletter_subscribers.confirmation_token_hash ELSE NULL END,
+        confirmation_expires_at = CASE WHEN newsletter_subscribers.status IN ('pending', 'active') THEN newsletter_subscribers.confirmation_expires_at ELSE NULL END,
+        updated_at = datetime('now')
+      RETURNING id, status
+    `).bind(email).first();
     const token = await newConfirmationToken();
     const challenge = await createChallenge(env, email, token);
-    if (challenge.meta?.changes !== 1) return json({ message: GENERIC_MESSAGE }, 202);
-    const config = newsletterConfig(env);
-    scheduleConfirmation(waitUntil, env, confirmationMessage(config, email, token, subscriber.id));
+    if (subscriber && challenge) {
+      const config = newsletterConfig(env);
+      scheduleConfirmation(waitUntil, env, confirmationMessage(config, email, token, challenge.subscriber_id), challenge.subscriber_id, token.hash);
+    }
   } catch {
     // Keep the public response uniform and never expose provider failures or tokens.
   }
