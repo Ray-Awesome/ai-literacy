@@ -26,3 +26,11 @@ test('public pages use accessible form controls and status only uses known state
   assert.match(script, /confirmed/);
   assert.doesNotMatch(script, /innerHTML\s*=/);
 });
+
+test('newsletter dark mode keeps labels and every newsletter action readable', async () => {
+  const css = await readFile(new URL('../../css/style.css', import.meta.url), 'utf8');
+  assert.match(css, /html\[data-theme="dark"\] \.newsletter-privacy dt \{ color: #BFDBFE; \}/);
+  assert.match(css, /html\[data-theme="dark"\] \.newsletter-status \.btn-outline \{ color: #BFDBFE; border-color: #93C5FD; \}/);
+  assert.match(css, /html\[data-theme="dark"\] \.newsletter-status \.btn-outline:hover \{ background: #BFDBFE; color: #0F172A; \}/);
+  assert.match(css, /html\[data-theme="dark"\] \.newsletter-card \.form-check a \{ color: #93C5FD; \}/);
+});

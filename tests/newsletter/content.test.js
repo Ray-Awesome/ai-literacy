@@ -47,3 +47,22 @@ test('image blocks require a nonempty alt and http URLs', () => {
   assert.match(result.errors.join(' '), /대체 텍스트/);
   assert.match(result.errors.join(' '), /허용되지 않는 URL/);
 });
+
+test('production-safe validation rejects HTTP images without ambient runtime state', () => {
+  const blocks = [
+    { id: 'image', type: 'image', data: { url: 'http://cdn.example.com/news.jpg', alt: '뉴스레터 표지', width: 640 } },
+  ];
+  const strict = validateBlocks(blocks);
+  assert.equal(strict.ok, false);
+  assert.match(strict.errors.join(' '), /허용되지 않는 URL/);
+  assert.equal(validateBlocks(blocks, { requireHttpsImages: false }).ok, true);
+  assert.throws(() => renderNewsletter({
+    subject: '제목', previewText: '미리보기', blocks,
+    unsubscribeUrl: 'https://ailiteracy.or.kr/api/newsletter/unsubscribe?token=x',
+  }), /허용되지 않는 URL/);
+  assert.doesNotThrow(() => renderNewsletter({
+    subject: '제목', previewText: '미리보기', blocks,
+    unsubscribeUrl: 'https://ailiteracy.or.kr/api/newsletter/unsubscribe?token=x',
+    requireHttpsImages: false,
+  }));
+});

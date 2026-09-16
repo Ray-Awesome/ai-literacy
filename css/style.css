@@ -713,6 +713,10 @@ html[data-theme="dark"] .footer-bottom  { color: #475569; }
 a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid rgba(59,130,246,.55); outline-offset: 3px; }
 html[data-theme="dark"] .newsletter-card { background: #1E293B; border-color: #334155; }
 html[data-theme="dark"] .newsletter-card h1, html[data-theme="dark"] .newsletter-home-link { color: #F1F5F9; }
+html[data-theme="dark"] .newsletter-card .form-check a { color: #93C5FD; }
+html[data-theme="dark"] .newsletter-privacy dt { color: #BFDBFE; }
+html[data-theme="dark"] .newsletter-status .btn-outline { color: #BFDBFE; border-color: #93C5FD; }
+html[data-theme="dark"] .newsletter-status .btn-outline:hover { background: #BFDBFE; color: #0F172A; }
 html[data-theme="dark"] .newsletter-feedback.loading { color: #BFDBFE; border-color: #3B82F6; background: #172554; }
 html[data-theme="dark"] .newsletter-feedback.success { color: #A7F3D0; border-color: #059669; background: #064E3B; }
 html[data-theme="dark"] .newsletter-feedback.error { color: #FECACA; border-color: #DC2626; background: #450A0A; }
