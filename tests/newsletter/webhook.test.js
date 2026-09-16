@@ -34,8 +34,21 @@ class WebhookD1 {
 
   prepare(sql) {
     return {
-      bind: (...params) => ({ sql, params, run: () => this.run(sql, params) }),
+      bind: (...params) => ({
+        sql, params,
+        run: () => this.run(sql, params),
+        first: () => this.first(sql, params),
+      }),
     };
+  }
+
+  async first(sql, params) {
+    if (sql.includes('SELECT svix_id FROM newsletter_webhook_events')) {
+      return this.rows.webhookEvents.find((event) => (
+        event.svix_id === params[0] && event.processed_at !== null
+      )) ?? null;
+    }
+    throw new Error(`Unsupported first query: ${sql}`);
   }
 
   async batch(statements) {
@@ -53,6 +66,10 @@ class WebhookD1 {
   async run(sql, params) {
     if (sql.includes('INSERT INTO newsletter_webhook_events')) {
       const [svixId, claimToken] = params;
+      const messageId = params.length === 5 ? params[4] : null;
+      if (messageId && !this.rows.deliveries.some((delivery) => delivery.resend_message_id === messageId)) {
+        return { meta: { changes: 0 } };
+      }
       if (!this.rows.webhookEvents.some((event) => event.svix_id === svixId)) {
         this.rows.webhookEvents.push({ svix_id: svixId, claim_token: claimToken, processed_at: null });
         return { meta: { changes: 1 } };
@@ -203,6 +220,22 @@ test('a failed suppression transaction does not consume its Svix event', async (
   retry.env.DB = ctx.db;
   assert.equal((await onRequestPost(retry)).status, 200);
   assert.equal(ctx.db.rows.subscribers[0].status, 'bounced');
+});
+
+test('a suppression event retries until the worker has stored its provider message id', async () => {
+  const first = makeWebhookContext({ id: 'msg_before_provider_id' });
+  first.db.rows.deliveries[0].resend_message_id = null;
+  assert.equal((await onRequestPost(first)).status, 500);
+  assert.equal(first.db.rows.subscribers[0].status, 'active');
+  assert.equal(first.db.rows.webhookEvents.length, 0);
+
+  first.db.rows.deliveries[0].resend_message_id = 'resend-message-1';
+  const retry = makeWebhookContext({ id: 'msg_before_provider_id' });
+  retry.db = first.db;
+  retry.env.DB = first.db;
+  assert.equal((await onRequestPost(retry)).status, 200);
+  assert.equal(first.db.rows.subscribers[0].status, 'bounced');
+  assert.equal(first.db.rows.webhookEvents.length, 1);
 });
 
 test('valid unhandled events are acknowledged after validation', async () => {

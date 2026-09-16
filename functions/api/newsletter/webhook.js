@@ -81,12 +81,25 @@ function suppressionFor(event) {
 
 function eventStatements(svixId, claimToken, event, status) {
   const messageId = event.data.email_id ?? null;
-  const statements = [
-    `INSERT INTO newsletter_webhook_events (svix_id, claim_token, event_type, resend_message_id)
-     VALUES (?, ?, ?, ?)
-     ON CONFLICT(svix_id) DO NOTHING`,
-  ];
-  const bindings = [[svixId, claimToken, event.type, messageId]];
+  const statements = [];
+  const bindings = [];
+
+  if (status) {
+    statements.push(
+      `INSERT INTO newsletter_webhook_events (svix_id, claim_token, event_type, resend_message_id)
+       SELECT ?, ?, ?, ?
+       WHERE EXISTS (SELECT 1 FROM newsletter_deliveries WHERE resend_message_id = ?)
+       ON CONFLICT(svix_id) DO NOTHING`,
+    );
+    bindings.push([svixId, claimToken, event.type, messageId, messageId]);
+  } else {
+    statements.push(
+      `INSERT INTO newsletter_webhook_events (svix_id, claim_token, event_type, resend_message_id)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(svix_id) DO NOTHING`,
+    );
+    bindings.push([svixId, claimToken, event.type, messageId]);
+  }
 
   if (status) {
     statements.push(
@@ -119,6 +132,13 @@ function eventStatements(svixId, claimToken, event, status) {
   return statements.map((sql, index) => ({ sql, bindings: bindings[index] }));
 }
 
+async function suppressionEventProcessed(db, svixId) {
+  return db.prepare(`
+    SELECT svix_id FROM newsletter_webhook_events
+    WHERE svix_id = ? AND processed_at IS NOT NULL
+  `).bind(svixId).first();
+}
+
 export async function onRequestPost({ request, env }) {
   const svixId = request.headers.get('svix-id');
   const timestamp = request.headers.get('svix-timestamp');
@@ -134,9 +154,13 @@ export async function onRequestPost({ request, env }) {
   if (!event) return badRequest();
 
   const claimToken = crypto.randomUUID();
-  const statements = eventStatements(svixId, claimToken, event, suppressionFor(event));
+  const status = suppressionFor(event);
+  const statements = eventStatements(svixId, claimToken, event, status);
   try {
     await env.DB.batch(statements.map(({ sql, bindings }) => env.DB.prepare(sql).bind(...bindings)));
+    if (status && !await suppressionEventProcessed(env.DB, svixId)) {
+      return new Response('Webhook processing pending', { status: 500 });
+    }
   } catch {
     return new Response('Webhook processing failed', { status: 500 });
   }
