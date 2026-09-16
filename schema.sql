@@ -116,6 +116,15 @@ CREATE TABLE IF NOT EXISTS newsletter_deliveries (
 
 CREATE INDEX IF NOT EXISTS idx_newsletter_deliveries_send_status ON newsletter_deliveries(send_id, status);
 
+CREATE TABLE IF NOT EXISTS newsletter_webhook_events (
+  svix_id           TEXT    PRIMARY KEY,
+  claim_token       TEXT    NOT NULL,
+  event_type        TEXT    NOT NULL,
+  resend_message_id TEXT,
+  processed_at      TEXT,
+  created_at        TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS newsletter_rate_limits (
   scope             TEXT    NOT NULL,
   key_hash          TEXT    NOT NULL,
