@@ -8,6 +8,10 @@ binding = "DB"
 database_name = "ailit-db"
 database_id = "814df798-02f0-46d0-be2f-773980be4076"
 
+[[queues.producers]]
+binding = "NEWSLETTER_QUEUE"
+queue = "ailit-newsletter-send"
+
 [vars]
 ADMIN_EMAIL = ""
 
