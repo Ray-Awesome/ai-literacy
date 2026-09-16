@@ -31,12 +31,12 @@
 
 <main class="section">
   <div class="container">
-    <nav class="editorial-tabs" aria-label="편집실 메뉴" role="tablist">
-      <button class="btn btn-outline btn-sm" id="tabUsers" role="tab" aria-controls="panel" aria-selected="true">회원 목록</button>
-      <button class="btn btn-outline btn-sm" id="tabAnswers" role="tab" aria-controls="panel" aria-selected="false">답변 목록</button>
-      <button class="btn btn-outline btn-sm" id="tabNewsletters" role="tab" aria-controls="panel" aria-selected="false">뉴스레터</button>
-      <button class="btn btn-outline btn-sm" id="tabSubscribers" role="tab" aria-controls="panel" aria-selected="false">구독자</button>
-      <button class="btn btn-outline btn-sm" id="tabSends" role="tab" aria-controls="panel" aria-selected="false">발송 기록</button>
+    <nav class="editorial-tabs" aria-label="편집실 메뉴">
+      <button class="btn btn-outline btn-sm is-active" id="tabUsers">회원 목록</button>
+      <button class="btn btn-outline btn-sm" id="tabAnswers">답변 목록</button>
+      <button class="btn btn-outline btn-sm" id="tabNewsletters">뉴스레터</button>
+      <button class="btn btn-outline btn-sm" id="tabSubscribers">구독자</button>
+      <button class="btn btn-outline btn-sm" id="tabSends">발송 기록</button>
     </nav>
     <div id="panel" class="admin-scroll editorial-panel" aria-live="polite">불러오는 중...</div>
   </div>
@@ -44,7 +44,7 @@
 
 <footer class="site-footer"><div class="footer-inner"><div class="footer-bottom"><span>© 2026 ailit. All rights reserved. · <a href="https://ailiteracy.or.kr" style="color:inherit;">ailiteracy.or.kr</a></span><span><a href="index.html" style="color:#64748B;">← 홈으로</a></span></div></div></footer>
 <script src="js/auth.js"></script>
-<script src="js/admin-editorial.js"></script>
+<script type="module" src="js/admin-editorial.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

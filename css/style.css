@@ -741,7 +741,7 @@ html[data-theme="dark"] .newsletter-feedback.error { color: #FECACA; border-colo
 /* Editorial room */
 .editorial-tabs, .editorial-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .editorial-tabs { margin-bottom: 16px; }
-.editorial-tabs [aria-selected="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.editorial-tabs .is-active { background: var(--navy); color: #fff; border-color: var(--navy); }
 .editorial-panel { min-height: 220px; color: var(--gray); }
 .editorial-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .editorial-heading h2, .editorial-editor h3, .editorial-preview h3 { margin: 0; color: var(--navy); }

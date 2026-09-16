@@ -179,4 +179,9 @@ test('admin page keeps member and answer panels while loading the accessible edi
   assert.match(script, /800/);
   assert.match(script, /function setDirty\(render\)/);
   assert.doesNotMatch(script, /contenteditable/);
+  assert.doesNotMatch(html, /role="tab/);
+  assert.match(script, /aria-pressed/);
+  assert.match(script, /function refreshDerived\(/);
+  assert.match(script, /function paginationControls\(/);
+  assert.match(script, /function loadDeliveries\(/);
 });
