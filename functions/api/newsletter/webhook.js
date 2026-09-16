@@ -119,8 +119,42 @@ function eventStatements(svixId, claimToken, event, status) {
            SELECT 1 FROM newsletter_webhook_events
            WHERE svix_id = ? AND claim_token = ? AND processed_at IS NULL
          )`,
+      `UPDATE newsletter_sends
+       SET target_count = (SELECT COUNT(*) FROM newsletter_deliveries WHERE send_id = newsletter_sends.id),
+         success_count = (SELECT COUNT(*) FROM newsletter_deliveries WHERE send_id = newsletter_sends.id AND status = 'sent'),
+         failure_count = (SELECT COUNT(*) FROM newsletter_deliveries WHERE send_id = newsletter_sends.id AND status IN ('failed', 'bounced', 'complained')),
+         status = CASE WHEN EXISTS (SELECT 1 FROM newsletter_deliveries WHERE send_id = newsletter_sends.id AND status = 'pending') THEN 'sending'
+           WHEN NOT EXISTS (SELECT 1 FROM newsletter_deliveries WHERE send_id = newsletter_sends.id AND status IN ('failed', 'bounced', 'complained')) THEN 'completed'
+           WHEN EXISTS (SELECT 1 FROM newsletter_deliveries WHERE send_id = newsletter_sends.id AND status = 'sent') THEN 'partial' ELSE 'failed' END,
+         completed_at = CASE WHEN EXISTS (SELECT 1 FROM newsletter_deliveries WHERE send_id = newsletter_sends.id AND status = 'pending') THEN NULL ELSE datetime('now') END
+       WHERE id = (SELECT send_id FROM newsletter_deliveries WHERE resend_message_id = ? LIMIT 1)
+         AND EXISTS (
+           SELECT 1 FROM newsletter_webhook_events
+           WHERE svix_id = ? AND claim_token = ? AND processed_at IS NULL
+         )`,
+      `UPDATE newsletters
+       SET status = CASE (SELECT status FROM newsletter_sends WHERE id = (SELECT send_id FROM newsletter_deliveries WHERE resend_message_id = ? LIMIT 1))
+           WHEN 'failed' THEN 'failed' WHEN 'completed' THEN 'sent' WHEN 'partial' THEN 'sent' ELSE 'sending' END,
+         sent_at = CASE WHEN (SELECT status FROM newsletter_sends WHERE id = (SELECT send_id FROM newsletter_deliveries WHERE resend_message_id = ? LIMIT 1))
+           IN ('completed', 'partial') THEN COALESCE(sent_at, datetime('now')) ELSE sent_at END,
+         updated_at = datetime('now')
+       WHERE id = (SELECT newsletter_id FROM newsletter_sends WHERE id = (SELECT send_id FROM newsletter_deliveries WHERE resend_message_id = ? LIMIT 1))
+         AND EXISTS (
+           SELECT 1 FROM newsletter_webhook_events
+           WHERE svix_id = ? AND claim_token = ? AND processed_at IS NULL
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM newsletter_sends AS newer
+           WHERE newer.newsletter_id = newsletters.id
+             AND newer.id > (SELECT send_id FROM newsletter_deliveries WHERE resend_message_id = ? LIMIT 1)
+         )`,
     );
-    bindings.push([status, messageId, svixId, claimToken], [status, messageId, svixId, claimToken]);
+    bindings.push(
+      [status, messageId, svixId, claimToken],
+      [status, messageId, svixId, claimToken],
+      [messageId, svixId, claimToken],
+      [messageId, messageId, messageId, svixId, claimToken, messageId],
+    );
   }
 
   statements.push(

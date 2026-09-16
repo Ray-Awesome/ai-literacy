@@ -98,6 +98,10 @@ class WebhookD1 {
       return { meta: { changes: subscriber ? 1 : 0 } };
     }
 
+    if (sql.includes('UPDATE newsletter_sends') || sql.includes('UPDATE newsletters')) {
+      return { meta: { changes: 0 } };
+    }
+
     if (sql.includes('SET processed_at')) {
       const [svixId, claimToken] = params;
       const event = this.rows.webhookEvents.find((item) => item.svix_id === svixId && item.claim_token === claimToken);
