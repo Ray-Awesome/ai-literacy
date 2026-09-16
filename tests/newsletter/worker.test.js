@@ -69,6 +69,12 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
     }
     if (sql.includes("SET status = 'failed', error_code = ?")) {
       const [code, _message, deliveryId, sendId] = params;
+      if (sql.includes("delivery_certainty = 'known'")) {
+        const ids = JSON.parse(params[2]);
+        rows.deliveries.filter((delivery) => delivery.send_id === params[1] && delivery.status === 'pending' && ids.includes(delivery.id))
+          .forEach((delivery) => { delivery.status = 'failed'; delivery.error_code = code; delivery.delivery_certainty = 'known'; });
+        return null;
+      }
       const delivery = rows.deliveries.find((item) => item.id === deliveryId && item.send_id === sendId && item.status === 'pending');
       if (delivery) Object.assign(delivery, { status: 'failed', error_code: code });
       return null;
@@ -289,4 +295,17 @@ test('DLQ reconciliation marks an existing provider operation indeterminate with
   assert.equal(rows.deliveries.every((delivery) => delivery.status === 'failed'), true);
   assert.equal(rows.deliveries.every((delivery) => delivery.delivery_certainty === 'indeterminate'), true);
   assert.equal(rows.send.status, 'failed');
+});
+
+test('DLQ preserves a rejected operation diagnostic without another provider call', async () => {
+  const { env, rows } = workerEnv();
+  rows.operations.push({ operation_key: 'claim:3:22222222-2222-4222-8222-222222222222', send_id: 3, delivery_ids_json: '[21,22]', request_body: '[]', provider_key: 'key', provider_result: '{"code":"validation_error"}', status: 'created', outcome: 'rejected' });
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; throw new Error('must not send'); };
+  try {
+    await worker.queue({ queue: 'ailit-newsletter-dead-letter', messages: [{ body: { sendId: 3, deliveryIds: [21, 22], queueClaimKey: '22222222-2222-4222-8222-222222222222' } }] }, env);
+  } finally { globalThis.fetch = originalFetch; }
+  assert.equal(calls, 0);
+  assert.equal(rows.deliveries.every((delivery) => delivery.status === 'failed' && delivery.error_code === 'validation_error' && delivery.delivery_certainty !== 'indeterminate'), true);
 });
