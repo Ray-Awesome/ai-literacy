@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뉴스레터 구독 상태</title>
+<meta name="description" content="에이릿 뉴스레터 구독 상태">
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var t=localStorage.getItem('ailit-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <a class="newsletter-home-link" href="index.html">홈으로</a>
+    <button class="theme-toggle" id="themeToggle" aria-label="다크 모드 전환">
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</header>
+<main class="newsletter-page">
+  <section class="newsletter-card newsletter-status" aria-live="polite" aria-labelledby="newsletter-status-title">
+    <h1 id="newsletter-status-title">뉴스레터 구독 상태</h1>
+    <p id="newsletter-status-detail">구독 상태를 확인하고 있습니다.</p>
+    <a id="newsletter-status-action" class="btn btn-outline" hidden></a>
+  </section>
+</main>
+<script src="js/main.js"></script>
+<script src="js/newsletter.js"></script>
+</body>
+</html>

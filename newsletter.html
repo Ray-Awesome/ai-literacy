@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에이릿 뉴스레터 구독</title>
+<meta name="description" content="에이릿 뉴스레터 구독 신청">
+<link rel="stylesheet" href="css/style.css">
+<script>(function(){var t=localStorage.getItem('ailit-theme');if(t)document.documentElement.setAttribute('data-theme',t);})();</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo"><img src="images/logo2w.png" alt="AILIT AI Literacy Media"></a>
+    <a class="newsletter-home-link" href="index.html">홈으로</a>
+    <button class="theme-toggle" id="themeToggle" aria-label="다크 모드 전환">
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</header>
+<main class="newsletter-page">
+  <section class="newsletter-card" aria-labelledby="newsletter-title">
+    <h1 id="newsletter-title">에이릿 뉴스레터</h1>
+    <p class="newsletter-description">AI 리터러시와 교육에 관한 새 글을 이메일로 보내드립니다.</p>
+    <form id="newsletter-form" novalidate>
+      <div class="form-field">
+        <label for="newsletter-email">이메일 주소</label>
+        <input id="newsletter-email" name="email" type="email" autocomplete="email" inputmode="email" required>
+      </div>
+      <div class="newsletter-honeypot" aria-hidden="true">
+        <label for="newsletter-company">회사</label>
+        <input id="newsletter-company" name="company" type="text" tabindex="-1" autocomplete="off">
+      </div>
+      <label class="form-check" for="newsletter-consent">
+        <input id="newsletter-consent" name="consent" type="checkbox" required>
+        <span>뉴스레터 발송을 위한 개인정보 수집·이용에 동의합니다. <a href="newsletter-privacy.html" id="newsletter-privacy-description">안내 보기</a></span>
+      </label>
+      <p class="newsletter-note">확인 메일의 확인 링크를 눌러야 구독이 완료됩니다.</p>
+      <p id="newsletter-feedback" class="newsletter-feedback" role="status" aria-live="polite" hidden></p>
+      <button id="newsletter-submit" class="btn btn-primary btn-block" type="submit">구독 신청</button>
+    </form>
+  </section>
+</main>
+<script src="js/main.js"></script>
+<script src="js/newsletter.js"></script>
+</body>
+</html>
