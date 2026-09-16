@@ -26,6 +26,22 @@ test('versioned provider outcome migration makes known rejections terminal', asy
   const sql = await readFile(new URL('../../migrations/0006_newsletter_provider_operation_outcome.sql', import.meta.url), 'utf8');
   assert.match(sql, /ADD COLUMN outcome/);
   assert.match(sql, /ADD COLUMN settled_at/);
+  assert.match(sql, /WHERE status = 'accepted'/);
+});
+
+test('0006 backfills accepted provider operations while leaving unresolved created operations pending', async () => {
+  const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: 'export default { fetch() { return new Response("ok"); } }', d1Databases: ['DB'] }));
+  try {
+    const db = await mf.getD1Database('DB');
+    await db.exec("CREATE TABLE newsletter_provider_operations (operation_key TEXT PRIMARY KEY, status TEXT NOT NULL, created_at TEXT NOT NULL, accepted_at TEXT); INSERT INTO newsletter_provider_operations VALUES ('accepted', 'accepted', '2026-01-01', '2026-01-02'), ('unresolved', 'created', '2026-01-01', NULL);");
+    const sql = await readFile(new URL('../../migrations/0006_newsletter_provider_operation_outcome.sql', import.meta.url), 'utf8');
+    await db.exec(sql.replace(/^--.*$/gm, '').replace(/\n/g, ' '));
+    const rows = await db.prepare('SELECT operation_key, outcome, settled_at FROM newsletter_provider_operations ORDER BY operation_key').all();
+    assert.deepEqual(rows.results, [
+      { operation_key: 'accepted', outcome: 'accepted', settled_at: '2026-01-02' },
+      { operation_key: 'unresolved', outcome: 'pending', settled_at: null },
+    ]);
+  } finally { await mf.dispose(); }
 });
 
 test('versioned delivery outbox migration adds every runtime queue column for existing databases', async () => {

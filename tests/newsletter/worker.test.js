@@ -6,7 +6,7 @@ test('newsletter queue worker exposes a queue consumer', () => {
   assert.equal(typeof worker.queue, 'function');
 });
 
-function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false, failOperationResult = false, failOperationInsert = false } = {}) {
+function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false, failMarkFailure = false, failOperationResult = false, failOperationInsert = false } = {}) {
   const rows = {
     newsletter: {
       id: 8, subject: '안전한 제목', preview_text: '미리보기',
@@ -110,6 +110,10 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
         failMarkSent = false;
         throw new Error('D1 write failed after provider acceptance');
       }
+      if (failMarkFailure && statements.some((statement) => statement.sql.includes("SET status = 'failed', error_code = ?"))) {
+        failMarkFailure = false;
+        throw new Error('D1 failure-result write failed');
+      }
       statements.forEach((statement) => run(statement.sql, statement.params));
       return [];
     },
@@ -167,6 +171,22 @@ test('worker records permanent provider failures but throws transient failures f
     globalThis.fetch = originalFetch;
   }
   assert.equal(transient.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
+});
+
+test('rejected operation replays the stored rejection without another provider call and DLQ stays known', async () => {
+  const { env, rows } = workerEnv({ response: new Response(JSON.stringify({ code: 'validation_error' }), { status: 422 }), failMarkFailure: true });
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; return env.response; };
+  try {
+    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, env), /failure-result write failed/);
+    await processMessage({ sendId: 3, deliveryIds: [21, 22] }, env);
+    await worker.queue({ queue: 'ailit-newsletter-dead-letter', messages: [{ body: { sendId: 3, deliveryIds: [21, 22] } }] }, env);
+  } finally { globalThis.fetch = originalFetch; }
+  assert.equal(calls, 1);
+  assert.equal(rows.operations[0].outcome, 'rejected');
+  assert.equal(rows.deliveries.every((delivery) => delivery.status === 'failed' && delivery.delivery_certainty !== 'indeterminate'), true);
+  assert.equal(rows.deliveries.every((delivery) => delivery.error_code === 'validation_error'), true);
 });
 
 test('worker propagates a failed durable-operation insert when no matching operation can be reread', async () => {

@@ -20,5 +20,12 @@ test('retention purge removes only terminal history older than 24 months and pre
     assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM newsletter_subscribers').first()).count, 2);
     await db.exec(sql.replace(/^--.*$/gm, '').replace(/\n/g, ' '));
     assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM newsletter_subscribers WHERE status = \'unsubscribed\'').first()).count, 1);
+    // Authorized reconciliation establishes non-delivery before making this
+    // formerly indeterminate operation eligible for the ordinary purge path.
+    await db.exec("UPDATE newsletter_provider_operations SET outcome = 'rejected', status = 'created' WHERE operation_key = 'retain-indeterminate'; UPDATE newsletter_deliveries SET delivery_certainty = 'known', error_code = 'provider_rejected' WHERE send_id = 4;");
+    await db.exec(sql.replace(/^--.*$/gm, '').replace(/\n/g, ' '));
+    assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM newsletter_provider_operations WHERE operation_key = 'retain-indeterminate'").first()).count, 0);
+    assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM newsletter_sends WHERE id = 4').first()).count, 0);
+    assert.equal((await db.prepare('SELECT COUNT(*) AS count FROM newsletters WHERE id = 3').first()).count, 0);
   } finally { await mf.dispose(); }
 });

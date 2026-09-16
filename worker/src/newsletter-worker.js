@@ -61,7 +61,7 @@ async function operationKey(message) {
 }
 
 async function findOperation(env, key) {
-  return env.DB.prepare(`SELECT operation_key, send_id, delivery_ids_json, request_body, provider_key, provider_result, status
+  return env.DB.prepare(`SELECT operation_key, send_id, delivery_ids_json, request_body, provider_key, provider_result, status, outcome, settled_at
     FROM newsletter_provider_operations WHERE operation_key = ?`).bind(key).first();
 }
 
@@ -174,6 +174,14 @@ export async function processMessage(body, env) {
     deliveries = await operationDeliveries(env, message.sendId, ids);
     if (deliveries.length !== ids.length) throw new Error('Provider operation deliveries are unavailable');
   } catch { throw new Error('Invalid provider operation'); }
+  if (operation.outcome === 'rejected') {
+    let evidence;
+    try { evidence = JSON.parse(operation.provider_result || '{}'); } catch { evidence = {}; }
+    const code = PERMANENT_RESEND_CODES.has(evidence.code) ? evidence.code : 'provider_rejected';
+    await markResult(env, message.sendId, deliveries, { code, message: 'Email provider rejected this delivery' }, true);
+    await recomputeSend(env, message.sendId);
+    return;
+  }
   let result;
   try {
     result = operation.status === 'accepted' && operation.provider_result ? JSON.parse(operation.provider_result) : await requestResend(env, operation.request_body, operation.provider_key, messages.length);
@@ -199,7 +207,7 @@ export async function reconcileDlq(body, env) {
   const ids = JSON.stringify(operation ? JSON.parse(operation.delivery_ids_json) : message.deliveryIds);
   await env.DB.prepare(`UPDATE newsletter_deliveries SET status = 'failed', error_code = 'queue_retries_exhausted', error_message = 'Queue retries were exhausted', updated_at = datetime('now')
     , delivery_certainty = ? WHERE send_id = ? AND status = 'pending' AND id IN (SELECT value FROM json_each(?))`)
-    .bind(operation ? 'indeterminate' : 'known', message.sendId, ids).run();
+    .bind(operation && operation.outcome !== 'rejected' ? 'indeterminate' : 'known', message.sendId, ids).run();
   await recomputeSend(env, message.sendId);
 }
 
