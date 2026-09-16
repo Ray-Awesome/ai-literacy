@@ -260,11 +260,22 @@ remaining sends; drafts remain under editorial control. Retain `unsubscribed`,
 `bounced`, and `complained` subscriber email/status records indefinitely as the
 minimal anti-resend suppression record, unless a superseding legal deletion
 request requires an approved exception process. Run the ordered,
-foreign-key-safe transaction in [`newsletter-retention.sql`](newsletter-retention.sql)
-only in an approved maintenance window after backup and policy-owner sign-off.
-It deletes old delivery targets, severs a newer retry's `source_send_id` to an
-expiring source, then deletes old terminal sends and unreferenced old editorial
-content. It never deletes suppression subscriber rows.
+writer-paused, backup-first, ordered sequence in
+[`newsletter-retention.sql`](newsletter-retention.sql) only in an approved
+maintenance window after privacy-owner sign-off. D1 does not support SQL
+`BEGIN`/`COMMIT` here: run the exact file with `wrangler d1 execute --file`,
+wait for success, and keep newsletter writers paused for the whole command.
+Each statement is idempotent and safe to rerun. If a statement fails, keep
+writers paused, investigate from the backup and D1 output, correct the cause,
+then rerun the entire file; it deletes old delivery targets, severs a newer
+retry's `source_send_id` to an expiring source, then deletes old terminal sends
+and unreferenced content. Old `sent` content ages by `sent_at`; old `failed`
+content ages by `updated_at`. It never deletes suppression subscriber rows.
+
+```bash
+npx wrangler d1 execute ailit-db --local --file=docs/newsletter-retention.sql
+# Production: use --remote only in the separately approved maintenance window.
+```
 
 Production retention enablement is blocked until the privacy-policy owner
 approves these durations and the maintenance procedure. Restrict exports and
