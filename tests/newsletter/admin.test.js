@@ -224,4 +224,6 @@ test('admin page keeps member and answer panels while loading the accessible edi
   assert.match(script, /알려진 실패 수신자 재시도/);
   assert.match(script, /Idempotency-Key/);
   assert.match(script, /function loadNewsletters\(offset\)/);
+  assert.match(script, /bindInitialPageLoader\(tabs\.newsletters, loadNewsletters\)/);
+  assert.match(script, /createSendConfirmationController/);
 });

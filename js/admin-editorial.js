@@ -1,5 +1,6 @@
 import { beginSave, canSend, createEditorState, markDirty, navigationPlan, resolveSaveFailure, resolveSaveSuccess } from './admin-editorial-state.js';
 import { beginAction, createActionState, resolveAction } from './admin-editorial-actions.js';
+import { bindInitialPageLoader, createSendConfirmationController } from './admin-editorial-controller.js';
 import { sendOutcome } from './admin-editorial-send-status.js';
 
 (function () {
@@ -10,6 +11,7 @@ import { sendOutcome } from './admin-editorial-send-status.js';
   var tabs = {};
   ['Users', 'Answers', 'Newsletters', 'Subscribers', 'Sends'].forEach(function (name) { tabs[name.toLowerCase()] = document.getElementById('tab' + name); });
   var sessionNumber = 0;
+  var sendConfirmation = createSendConfirmationController();
   var editor = startEditor(blankDraft());
   var state = editor.draft;
   var saveTimer = null;
@@ -24,6 +26,7 @@ import { sendOutcome } from './admin-editorial-send-status.js';
   function startEditor(draft) {
     clearTimeout(saveTimer);
     flushAfterSave = false;
+    sendConfirmation.invalidate();
     return createEditorState(draft, 'editor-' + (++sessionNumber));
   }
   function leaveEditor() { editor = startEditor(blankDraft()); state = editor.draft; editorRefs = null; }
@@ -79,6 +82,7 @@ import { sendOutcome } from './admin-editorial-send-status.js';
     saveTimer = setTimeout(saveDraft, delay === undefined ? 800 : delay);
   }
   function setDirty(render) {
+    invalidateSendConfirmation();
     markDirty(editor);
     queueSave(800);
     if (render !== false) renderEditor();
@@ -87,6 +91,7 @@ import { sendOutcome } from './admin-editorial-send-status.js';
   function refreshDerived() {
     if (!editorRefs) return;
     var errors = validateDraft();
+    if (sendConfirmation.current() && !sendConfirmation.canSubmit(editor, errors.length === 0)) invalidateSendConfirmation();
     var enabled = canSend(editor, errors.length === 0);
     editorRefs.status.textContent = statusText();
     editorRefs.status.className = 'editorial-save-state ' + (editor.saveStatus === 'error' ? 'error' : editor.saving || editor.dirty ? 'loading' : 'success');
@@ -103,6 +108,10 @@ import { sendOutcome } from './admin-editorial-send-status.js';
     if (editor.saveStatus !== 'error' || !editor.dirty || editor.saving) return;
     queueSave(0);
     refreshDerived();
+  }
+  function invalidateSendConfirmation() {
+    sendConfirmation.invalidate();
+    if (editorRefs) editorRefs.sendConfirm.replaceChildren();
   }
   function requestNavigation(proceed) {
     var plan = navigationPlan(editor, validateDraft().length === 0);
@@ -161,27 +170,43 @@ import { sendOutcome } from './admin-editorial-send-status.js';
     });
   }
   function showFullSendConfirmation() {
-    if (!canSend(editor, validateDraft().length === 0) || !editorRefs) return;
-    var confirmationEditor = editor;
+    if (!editorRefs) return;
+    var request = sendConfirmation.begin(editor, validateDraft().length === 0);
+    if (!request) return;
     editorRefs.sendConfirm.replaceChildren(el('p', { className: 'editorial-save-state loading', text: '현재 활성 구독자 수를 확인하는 중…' }));
     api('/api/admin/newsletter-subscribers?summary=active').then(function (data) {
-      if (editor !== confirmationEditor || !editorRefs) return;
+      if (!editorRefs) return;
       var count = Number(data.activeCount || 0);
+      var confirmation = sendConfirmation.resolve(request, count, editor, validateDraft().length === 0);
+      if (!confirmation) { if (!sendConfirmation.current()) editorRefs.sendConfirm.replaceChildren(); return; }
       var confirm = el('section', { className: 'editorial-confirm', 'aria-label': '전체 발송 최종 확인' });
-      confirm.append(el('p', { text: '제목: ' + state.subject }), el('p', { text: '현재 활성 구독자 ' + count + '명에게 발송을 시작합니다.' }));
-      confirm.append(button('취소', function () { editorRefs.sendConfirm.replaceChildren(); }), button('최종 발송 시작', function () { startFullSend(count); }, false, 'btn btn-primary btn-sm'));
+      confirm.append(el('p', { text: '제목: ' + confirmation.subject }), el('p', { text: '현재 활성 구독자 ' + confirmation.recipientCount + '명에게 발송을 시작합니다.' }));
+      confirm.append(button('취소', invalidateSendConfirmation), button('최종 발송 시작', function () { startFullSend(confirmation); }, false, 'btn btn-primary btn-sm'));
       editorRefs.sendConfirm.replaceChildren(confirm);
-    }).catch(function (error) { if (editor === confirmationEditor && editorRefs) editorRefs.sendConfirm.replaceChildren(el('p', { className: 'editorial-error', text: error.message })); });
+    }).catch(function (error) {
+      if (sendConfirmation.current() !== request || !editorRefs) return;
+      sendConfirmation.invalidate();
+      editorRefs.sendConfirm.replaceChildren(el('p', { className: 'editorial-error', text: error.message }));
+    });
   }
-  function startFullSend(count) {
-    var id = state.id;
-    if (!id || !editorRefs) return;
-    var actionEditor = editor;
-    var context = { newsletterId: id, recipientCount: count };
+  function startFullSend(confirmation) {
+    var id;
+    var actionEditor;
+    var context;
+    var allowed = confirmation && editorRefs && sendConfirmation.submit(editor, validateDraft().length === 0, confirmation, function (confirmed) {
+      id = confirmed.draftId;
+      actionEditor = editor;
+      context = { newsletterId: id, recipientCount: confirmed.recipientCount, revision: confirmed.revision, subject: confirmed.subject };
+    });
+    if (!allowed) {
+      if (sendConfirmation.current() === confirmation) invalidateSendConfirmation();
+      refreshDerived();
+      return;
+    }
     runAction('send:' + id, context, '/api/admin/newsletters/' + id + '/send', {}, '전체 발송', function () {
       if (editor !== actionEditor || !editorRefs) { loadSends(0); return; }
       state.status = 'sending';
-      editorRefs.sendConfirm.replaceChildren();
+      invalidateSendConfirmation();
       refreshDerived();
       setTimeout(function () { loadSends(0); }, 400);
     }, function (action) {
@@ -190,7 +215,7 @@ import { sendOutcome } from './admin-editorial-send-status.js';
       editorRefs.actionStatus.className = 'editorial-save-state ' + (action.status === 'success' ? 'success' : action.status === 'pending' ? 'loading' : 'error');
       editorRefs.actionRetry.hidden = action.status !== 'retryable-error';
       editorRefs.fullButton.disabled = action.status === 'pending';
-      editorRefs.actionRetry.onclick = function () { startFullSend(count); };
+      editorRefs.actionRetry.onclick = function () { startFullSend(confirmation); };
     });
   }
   function startFailedRecipientRetry(send) {
@@ -216,6 +241,7 @@ import { sendOutcome } from './admin-editorial-send-status.js';
     if (errors.length || !editor.dirty) { refreshDerived(); return; }
     if (editor.saving) { flushAfterSave = true; refreshDerived(); return; }
     var requestEditor = editor;
+    invalidateSendConfirmation();
     var operation = beginSave(requestEditor);
     if (!operation) { refreshDerived(); return; }
     refreshDerived();
@@ -391,6 +417,6 @@ import { sendOutcome } from './admin-editorial-send-status.js';
       panel.append(paginationControls(offset, limit, rows.length === limit, function (nextOffset) { loadDeliveries(sendId, nextOffset); }));
     }).catch(function (error) { message(error.message, 'error'); });
   }
-  tabs.users.addEventListener('click', loadUsers); tabs.answers.addEventListener('click', loadAnswers); tabs.newsletters.addEventListener('click', loadNewsletters); tabs.subscribers.addEventListener('click', function () { loadSubscribers(0); }); tabs.sends.addEventListener('click', function () { loadSends(0); });
+  tabs.users.addEventListener('click', loadUsers); tabs.answers.addEventListener('click', loadAnswers); bindInitialPageLoader(tabs.newsletters, loadNewsletters); tabs.subscribers.addEventListener('click', function () { loadSubscribers(0); }); tabs.sends.addEventListener('click', function () { loadSends(0); });
   window.AilitAuth.me().then(function (data) { if (!data.user.isAdmin) { adminInfo.textContent = '관리자 권한이 없습니다.'; message('이 페이지는 관리자만 볼 수 있습니다.', 'error'); return; } adminInfo.textContent = data.user.email + ' (관리자)'; loadUsers(); }).catch(function () { location.href = 'login.html'; });
 }());
