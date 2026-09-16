@@ -24,7 +24,7 @@ Implemented the newsletter draft APIs and the `에이릿 편집실` integration.
 
 ## Commit
 
-Recorded in the Task 5 implementation commit (hash added after commit).
+`f8255ca` — `feat: integrate newsletter CMS into AILIT editorial room`
 
 ## Self-review
 
