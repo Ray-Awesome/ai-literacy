@@ -87,11 +87,11 @@ export async function onRequestPost({ request, env, waitUntil }) {
       INSERT INTO newsletter_subscribers (email, status, consent_at)
       VALUES (?, 'pending', datetime('now'))
       ON CONFLICT(email) DO UPDATE SET
-        status = CASE WHEN newsletter_subscribers.status = 'active' THEN 'active' ELSE 'pending' END,
-        consent_at = CASE WHEN newsletter_subscribers.status = 'active' THEN newsletter_subscribers.consent_at ELSE excluded.consent_at END,
-        confirmed_at = CASE WHEN newsletter_subscribers.status IN ('pending', 'active') THEN newsletter_subscribers.confirmed_at ELSE NULL END,
-        confirmation_token_hash = CASE WHEN newsletter_subscribers.status IN ('pending', 'active') THEN newsletter_subscribers.confirmation_token_hash ELSE NULL END,
-        confirmation_expires_at = CASE WHEN newsletter_subscribers.status IN ('pending', 'active') THEN newsletter_subscribers.confirmation_expires_at ELSE NULL END,
+        status = CASE WHEN newsletter_subscribers.status IN ('active', 'bounced', 'complained') THEN newsletter_subscribers.status ELSE 'pending' END,
+        consent_at = CASE WHEN newsletter_subscribers.status IN ('active', 'bounced', 'complained') THEN newsletter_subscribers.consent_at ELSE excluded.consent_at END,
+        confirmed_at = CASE WHEN newsletter_subscribers.status IN ('pending', 'active', 'bounced', 'complained') THEN newsletter_subscribers.confirmed_at ELSE NULL END,
+        confirmation_token_hash = CASE WHEN newsletter_subscribers.status IN ('pending', 'active', 'bounced', 'complained') THEN newsletter_subscribers.confirmation_token_hash ELSE NULL END,
+        confirmation_expires_at = CASE WHEN newsletter_subscribers.status IN ('pending', 'active', 'bounced', 'complained') THEN newsletter_subscribers.confirmation_expires_at ELSE NULL END,
         updated_at = datetime('now')
       RETURNING id, status
     `).bind(email).first();

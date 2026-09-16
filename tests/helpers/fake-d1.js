@@ -53,7 +53,7 @@ export class FakeD1 {
       if (!row) {
         row = { id: this.nextSubscriberId++, email, status: 'pending', consent_at: '2026-09-16 00:00:00' };
         this.rows.subscribers.push(row);
-      } else if (row.status !== 'active') {
+      } else if (!['active', 'bounced', 'complained'].includes(row.status)) {
         const wasPending = row.status === 'pending';
         row.status = 'pending';
         row.consent_at = '2026-09-16 00:00:00';
@@ -96,6 +96,10 @@ export class FakeD1 {
   }
 
   async run(sql, params) {
+    if (this.failNextRun) {
+      this.failNextRun = false;
+      throw new Error('Simulated D1 failure');
+    }
     if (sql.includes('newsletter_rate_limits')) return this.consumeRateLimit(params);
 
     if (sql.includes('DELETE FROM newsletter_confirmation_challenges') && sql.includes("status <> 'pending'")) {
@@ -226,12 +230,14 @@ export class FakeD1 {
       return { meta: { changes: 1 } };
     }
 
-    if (sql.includes("SET status = 'unsubscribed'")) {
+    if (sql.includes("SET status = 'unsubscribed'") || sql.includes("ELSE 'unsubscribed'")) {
       const [id] = params;
       const row = this.rows.subscribers.find((subscriber) => subscriber.id === id);
       if (!row) return { meta: { changes: 0 } };
-      row.status = 'unsubscribed';
-      row.unsubscribed_at ||= '2026-09-16 00:00:00';
+      if (!['bounced', 'complained'].includes(row.status)) {
+        row.status = 'unsubscribed';
+        row.unsubscribed_at ||= '2026-09-16 00:00:00';
+      }
       return { meta: { changes: 1 } };
     }
 

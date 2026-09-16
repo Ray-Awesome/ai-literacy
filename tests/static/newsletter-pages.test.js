@@ -24,6 +24,7 @@ test('public pages use accessible form controls and status only uses known state
   assert.match(privacy, /Resend/);
   assert.match(status, /aria-live="polite"/);
   assert.match(script, /confirmed/);
+  assert.match(script, /error:\s*\{/);
   assert.doesNotMatch(script, /innerHTML\s*=/);
 });
 

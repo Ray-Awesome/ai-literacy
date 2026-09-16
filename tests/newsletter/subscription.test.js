@@ -5,6 +5,7 @@ import { onRequestGet as confirm } from '../../functions/api/newsletter/confirm.
 import { onRequestPost as resendConfirmation } from '../../functions/api/newsletter/resend-confirmation.js';
 import { onRequestGet as unsubscribe, onRequestPost as unsubscribeOneClick } from '../../functions/api/newsletter/unsubscribe.js';
 import { ResendError, retirePriorChallenges, sendEmail } from '../../lib/newsletter/resend.js';
+import { newConfirmationToken } from '../../lib/newsletter/tokens.js';
 import { makeEnv, jsonRequest } from '../helpers/fixtures.js';
 
 const GENERIC_RESPONSE = '확인할 수 있는 경우 구독 안내 메일을 보냈습니다.';
@@ -184,6 +185,28 @@ test('re-subscribing cannot reactivate an old challenge from before unsubscribe'
   assert.match(freshConfirmation.headers.get('Location'), /state=confirmed/);
 });
 
+test('bounced and complained subscribers remain permanently suppressed across public lifecycle routes', async (context) => {
+  for (const status of ['bounced', 'complained']) {
+    const env = makeEnv();
+    const subscriber = env.seedSubscriber(`${status}@example.com`, status);
+    const confirmation = await newConfirmationToken();
+    env.rows.challenges.push({ subscriber_id: subscriber.id, token_hash: confirmation.hash, expires_at: '2999-01-01 00:00:00' });
+
+    const subscribed = await subscribeAndDrain(env, { email: subscriber.email, consent: true });
+    const resent = await resendAndDrain(env, { email: subscriber.email });
+    const confirmed = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${confirmation.raw}`), env });
+    const action = await env.unsubscribeToken(subscriber);
+    const cancelled = await unsubscribe({ request: new Request(`https://site.test/api/newsletter/unsubscribe?token=${action}`), env });
+
+    assert.equal(subscribed.status, 202);
+    assert.equal(resent.status, 202);
+    assert.match(confirmed.headers.get('Location'), /state=invalid/);
+    assert.match(cancelled.headers.get('Location'), /state=unsubscribed/);
+    assert.equal(subscriber.status, status);
+    assert.equal(env.scheduled.length, 0);
+  }
+});
+
 test('Resend client sets its idempotency header and returns a typed error without leaking response details', async (context) => {
   const { env } = context;
   let captured;
@@ -270,6 +293,22 @@ test('one-click unsubscribe rejects invalid RFC 8058 request bodies before mutat
   assert.equal(subscriber.status, 'active');
 });
 
+test('one-click unsubscribe returns retryable failure when D1 persistence fails', async (context) => {
+  const { env } = context;
+  const subscriber = env.seedSubscriber('reader@example.com');
+  const token = await env.unsubscribeToken(subscriber);
+  const url = `https://site.test/api/newsletter/unsubscribe?token=${token}`;
+  env.DB.failNextRun = true;
+  const post = await unsubscribeOneClick({
+    request: new Request(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=One-Click' }), env,
+  });
+  assert.equal(post.status, 503);
+  assert.equal(subscriber.status, 'active');
+  env.DB.failNextRun = true;
+  const get = await unsubscribe({ request: new Request(url), env });
+  assert.match(get.headers.get('Location'), /state=error/);
+});
+
 test('a concurrent activation cannot schedule a confirmation challenge that D1 did not store', async (context) => {
   const { env } = context;
   const subscriber = env.seedSubscriber('reader@example.com', 'pending');
@@ -293,10 +332,15 @@ test('resend performs the same public D1 operation shape for pending and unknown
   await pending.seedPending('reader@example.com');
   pending.DB.operations = [];
   const unknown = makeEnv();
+  const suppressed = makeEnv();
+  suppressed.seedSubscriber('suppressed@example.com', 'complained');
+  suppressed.DB.operations = [];
   globalThis.fetch = async () => new Promise(() => {});
   await resendConfirmation(publicContext(pending, jsonRequest('/api/newsletter/resend-confirmation', { email: 'reader@example.com' })));
   await resendConfirmation(publicContext(unknown, jsonRequest('/api/newsletter/resend-confirmation', { email: 'unknown@example.com' })));
+  await resendConfirmation(publicContext(suppressed, jsonRequest('/api/newsletter/resend-confirmation', { email: 'suppressed@example.com' })));
   assert.deepEqual(pending.DB.operations, unknown.DB.operations);
+  assert.deepEqual(suppressed.DB.operations, unknown.DB.operations);
 });
 
 test('subscribe performs the same public D1 operation shape for pending and unknown emails', async () => {
@@ -304,8 +348,13 @@ test('subscribe performs the same public D1 operation shape for pending and unkn
   await pending.seedPending('reader@example.com');
   pending.DB.operations = [];
   const unknown = makeEnv();
+  const suppressed = makeEnv();
+  suppressed.seedSubscriber('suppressed@example.com', 'bounced');
+  suppressed.DB.operations = [];
   globalThis.fetch = async () => new Promise(() => {});
   await subscribe(publicContext(pending, jsonRequest('/api/newsletter/subscribe', { email: 'reader@example.com', consent: true })));
   await subscribe(publicContext(unknown, jsonRequest('/api/newsletter/subscribe', { email: 'unknown@example.com', consent: true })));
+  await subscribe(publicContext(suppressed, jsonRequest('/api/newsletter/subscribe', { email: 'suppressed@example.com', consent: true })));
   assert.deepEqual(pending.DB.operations, unknown.DB.operations);
+  assert.deepEqual(suppressed.DB.operations, unknown.DB.operations);
 });
