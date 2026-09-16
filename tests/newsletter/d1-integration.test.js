@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { Miniflare } from 'miniflare';
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 
 test('local D1 applies existing-db migrations and selects an exact 100-recipient JSON batch below the parameter ceiling', async () => {
-  const mf = new Miniflare({ modules: true, script: 'export default { fetch() { return new Response("ok"); } }', d1Databases: ['DB'] });
+  const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: 'export default { fetch() { return new Response("ok"); } }', d1Databases: ['DB'] }));
   try {
     const db = await mf.getD1Database('DB');
     await db.exec(`CREATE TABLE newsletter_deliveries (id INTEGER PRIMARY KEY, send_id INTEGER NOT NULL, subscriber_id INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending');`);

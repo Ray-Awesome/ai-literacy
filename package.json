@@ -12,6 +12,6 @@
     "db:init:remote": "wrangler d1 execute ailit-db --remote --file=./schema.sql"
   },
   "devDependencies": {
-    "wrangler": "4.104.0"
+    "wrangler": "4.132.0"
   }
 }

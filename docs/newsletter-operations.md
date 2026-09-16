@@ -97,16 +97,26 @@ once using the remote D1 target, then verify its table list. Do not subsequently
 apply migrations `0002` through `0004` to that fresh snapshot, because their
 schema changes are already included.
 
-For an **existing** D1 database that predates these changes, take a backup and
-apply the existing migrations exactly once and in this order:
+For the real pre-newsletter AILIT database, first prove the precondition: its
+only application tables are `users` and `answers` (no `newsletter_%` table).
+Take an export/backup, record its location and checksum, then apply migrations
+**once** and in this exact order:
 
 ```bash
+npx wrangler d1 execute ailit-db --remote --file=migrations/0001_newsletter_baseline.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0002_newsletter_delivery_outbox.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0003_newsletter_retry_source.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0004_newsletter_webhook_events.sql
 ```
 
-These are remote mutations and are intentionally not part of local verification.
+`0001` creates the complete pre-outbox newsletter baseline; it intentionally
+does not create the delivery queue columns added by `0002`, the retry source
+added by `0003`, or webhook events added by `0004`. `0002` and `0003` use
+non-repeatable `ALTER TABLE`: never reapply them. A partially migrated database
+is a stop condition—compare `PRAGMA table_info(newsletter_deliveries)` and
+`PRAGMA table_info(newsletter_sends)` with the migration ledger and obtain a
+recovery plan rather than guessing. These are remote mutations and are
+intentionally not part of local verification.
 Record the change ticket, database backup/export location, timestamp, operator,
 and each command's output. Do not use `db:init:remote` against an existing
 production database: it is a bootstrap convenience, not a migration ledger.
@@ -156,7 +166,7 @@ D1 errors, Resend API failures, webhook 4xx/5xx, and per-send counts in
 | `completed` | Every delivery was marked `sent`. Retain the send record. |
 | `partial` | Some deliveries failed; use the editor's failed-recipient retry action after the cause is understood. |
 | `failed` | No eligible delivery succeeded or queueing failed; inspect errors, bindings, and provider state before retrying. |
-| `sending` / `queued` for longer than the operational threshold | Check queue backlog, Worker deployment/logs, D1 connectivity, and the claimed/queued delivery rows. |
+| `sending` / `queued` for more than 15 minutes | Page the on-call editor and investigate queue backlog, Worker deployment/logs, D1 connectivity, and claimed/queued rows. |
 
 The initial-send and retry routes require an `Idempotency-Key`; reuse the same
 key only to resume the same request, never for another newsletter. Recipient
@@ -170,6 +180,24 @@ pending deliveries `failed` with `queue_retries_exhausted` and recomputes the
 send. Fix the underlying Worker, binding, or provider fault first; then use the
 administrator retry endpoint for failed recipients. Do not manually replay a
 DLQ message until duplicate-safe state and the source send have been checked.
+
+The on-call owner is the designated **newsletter editor**; the technical owner
+is the Cloudflare service maintainer. At least every 15 minutes during an active
+send, alert if a send is still `queued`/`sending`, queue backlog is nonzero for
+15 minutes, DLQ has any message, or Pages/Worker webhook or queue errors exceed
+0 in five minutes. Use the Cloudflare queue dashboard and Worker/Pages logs,
+then run this read-only D1 reconciliation query:
+
+```sql
+SELECT s.id, s.status, s.started_at, s.target_count, s.success_count, s.failure_count,
+       SUM(d.status = 'pending') AS pending, SUM(d.status = 'failed') AS failed
+FROM newsletter_sends s LEFT JOIN newsletter_deliveries d ON d.send_id = s.id
+WHERE s.status IN ('queued', 'sending', 'partial', 'failed')
+GROUP BY s.id ORDER BY s.started_at;
+```
+
+For an alert, pause new sends, preserve logs/message metadata, identify the
+binding/provider cause, and only then use the failed-recipient retry action.
 
 ## Local smoke tests and build verification
 
@@ -186,14 +214,14 @@ npx wrangler d1 execute ailit-db --local --command "SELECT name FROM sqlite_mast
 npx wrangler deploy --config worker/wrangler.toml --dry-run
 npm run dev
 
-curl -i http://localhost:8788/newsletter.html
+curl -i http://localhost:8788/newsletter
 curl -i -X POST http://localhost:8788/api/newsletter/subscribe \
   -H 'Content-Type: application/json' \
   --data '{"email":"delivered@resend.dev","consent":true,"company":""}'
 curl -i http://localhost:8788/api/admin/newsletters
 ```
 
-Expected local results: `newsletter.html` returns `200`; the subscription
+Expected local results: `/newsletter` returns `200`; the subscription
 returns `202` and the generic Korean confirmation-notice copy (not account
 existence); the unauthenticated administrator call returns `401`. Stop the
 local dev server after the checks. `dist/` must contain only generated public
@@ -223,8 +251,24 @@ physically deleting it, preserving the minimal record needed to prevent future
 mail. Permanent bounces and complaints remain suppressed. Access to subscriber,
 delivery, and webhook data is limited to authorized administrators.
 
-Retain delivery and webhook records only for the approved operational,
-compliance, and troubleshooting period. Document the period in the applicable
-privacy/retention policy, restrict exports, and securely delete or anonymize
-records when that period ends unless a legal retention requirement applies.
+Purge confirmation challenges and confirmation-delivery state after 30 days;
+purge delivery error details and webhook event payload metadata after 90 days;
+retain aggregate newsletter/send counts for 24 months. Retain `unsubscribed`,
+`bounced`, and `complained` subscriber email/status records indefinitely as the
+minimal anti-resend suppression record, unless a superseding legal deletion
+request requires an approved exception process. Run the following only in an
+approved maintenance window after backup and policy-owner sign-off (the local
+equivalents are safe to rehearse with `--local`):
+
+```sql
+DELETE FROM newsletter_confirmation_challenges WHERE created_at < datetime('now', '-30 days');
+DELETE FROM newsletter_confirmation_delivery_state WHERE updated_at < datetime('now', '-30 days');
+DELETE FROM newsletter_webhook_events WHERE created_at < datetime('now', '-90 days');
+UPDATE newsletter_deliveries SET error_code = NULL, error_message = NULL
+WHERE updated_at < datetime('now', '-90 days');
+```
+
+Production retention enablement is blocked until the privacy-policy owner
+approves these durations and the maintenance procedure. Restrict exports and
+securely delete any derived files when their retention ends.
 The service must never enable open or click tracking.
