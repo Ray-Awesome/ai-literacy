@@ -9,6 +9,8 @@ export class FakeD1 {
   prepare(sql) {
     return {
       bind: (...params) => ({
+        sql,
+        params,
         first: async () => {
           this.operations.push('first');
           return this.first(sql, params);
@@ -19,6 +21,25 @@ export class FakeD1 {
         },
       }),
     };
+  }
+
+  async batch(statements) {
+    this.operations.push('batch');
+    this.batchDepth = (this.batchDepth || 0) + 1;
+    try {
+      const results = [];
+      for (const statement of statements) {
+        const result = await this.run(statement.sql, statement.params);
+        results.push({ meta: result.meta, results: result.result ? [result.result] : [] });
+      }
+      return results;
+    } finally {
+      this.batchDepth -= 1;
+      if (!this.batchDepth && this.challengeInsertedDuringBatch) {
+        this.challengeInsertedDuringBatch = false;
+        await this.onChallengeInserted?.();
+      }
+    }
   }
 
   async first(sql, params) {
@@ -112,6 +133,8 @@ export class FakeD1 {
       const subscriber = this.rows.subscribers.find((row) => row.email === email && row.status === 'pending');
       if (!subscriber || this.rows.challenges.some((challenge) => challenge.token_hash === tokenHash)) return { meta: { changes: 0 } };
       this.rows.challenges.push({ subscriber_id: subscriber.id, token_hash: tokenHash, expires_at: '2999-01-01 00:00:00' });
+      if (this.batchDepth) this.challengeInsertedDuringBatch = true;
+      else await this.onChallengeInserted?.();
       return { meta: { changes: 1 }, result: { subscriber_id: subscriber.id } };
     }
 

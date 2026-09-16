@@ -4,7 +4,7 @@ import { onRequestPost as subscribe } from '../../functions/api/newsletter/subsc
 import { onRequestGet as confirm } from '../../functions/api/newsletter/confirm.js';
 import { onRequestPost as resendConfirmation } from '../../functions/api/newsletter/resend-confirmation.js';
 import { onRequestGet as unsubscribe, onRequestPost as unsubscribeOneClick } from '../../functions/api/newsletter/unsubscribe.js';
-import { ResendError, sendEmail } from '../../lib/newsletter/resend.js';
+import { ResendError, retirePriorChallenges, sendEmail } from '../../lib/newsletter/resend.js';
 import { makeEnv, jsonRequest } from '../helpers/fixtures.js';
 
 const GENERIC_RESPONSE = '확인할 수 있는 경우 구독 안내 메일을 보냈습니다.';
@@ -232,6 +232,20 @@ test('an earlier successful delivery cannot retire a newer concurrent challenge'
   deliveries[1](new Response(JSON.stringify({ id: 'second' }), { status: 200 }));
   await secondWork;
   assert.equal(env.rows.challenges.length, 1);
+});
+
+test('challenge registration is atomic against an earlier delivery cleanup', async (context) => {
+  const { env } = context;
+  await env.seedPending('reader@example.com');
+  const subscriber = env.rows.subscribers[0];
+  const oldHash = env.rows.challenges[0].token_hash;
+  env.rows.deliveryStates.push({ subscriber_id: subscriber.id, current_token_hash: oldHash });
+  env.DB.onChallengeInserted = () => retirePriorChallenges(env, subscriber.id, oldHash);
+  const response = await resendConfirmation(publicContext(env, jsonRequest('/api/newsletter/resend-confirmation', { email: 'reader@example.com' })));
+  assert.equal(response.status, 202);
+  assert.equal(env.scheduled.length, 1);
+  assert.equal(env.rows.challenges.length, 2);
+  assert.notEqual(env.rows.deliveryStates[0].current_token_hash, oldHash);
 });
 
 test('JSON null and arrays receive safe public responses', async (context) => {

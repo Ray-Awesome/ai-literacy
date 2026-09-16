@@ -21,14 +21,14 @@ function confirmationMessage(config, email, token, id) {
 }
 
 async function createChallenge(env, email, token) {
-  const challenge = await env.DB.prepare(`
+  const challengeStatement = env.DB.prepare(`
     INSERT INTO newsletter_confirmation_challenges (token_hash, subscriber_id, expires_at)
     SELECT ?, id, datetime('now', '+24 hours')
     FROM newsletter_subscribers
     WHERE email = ? AND status = 'pending'
     RETURNING subscriber_id
-  `).bind(token.hash, email).first();
-  const state = await env.DB.prepare(`
+  `).bind(token.hash, email);
+  const stateStatement = env.DB.prepare(`
     INSERT INTO newsletter_confirmation_delivery_state (subscriber_id, current_token_hash)
     SELECT id, ? FROM newsletter_subscribers
     WHERE email = ? AND status = 'pending'
@@ -38,8 +38,9 @@ async function createChallenge(env, email, token) {
       )
     ON CONFLICT(subscriber_id) DO UPDATE SET
       current_token_hash = excluded.current_token_hash, updated_at = datetime('now')
-  `).bind(token.hash, email, token.hash).run();
-  return state.meta?.changes === 1 ? challenge : null;
+  `).bind(token.hash, email, token.hash);
+  const [challenge, state] = await env.DB.batch([challengeStatement, stateStatement]);
+  return state.meta?.changes === 1 ? challenge.results?.[0] : null;
 }
 
 export async function onRequestPost({ request, env, waitUntil }) {
