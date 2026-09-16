@@ -1,4 +1,5 @@
-import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, resolveSaveSuccess } from './admin-editorial-state.js';
+import { beginSave, canSend, createEditorState, markDirty, navigationPlan, resolveSaveFailure, resolveSaveSuccess } from './admin-editorial-state.js';
+import { beginAction, createActionState, resolveAction } from './admin-editorial-actions.js';
 
 (function () {
   'use strict';
@@ -14,6 +15,9 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
   var flushAfterSave = false;
   var previewMode = 'desktop';
   var editorRefs = null;
+  var pendingNavigation = null;
+  var discardNavigation = null;
+  var actions = createActionState(function () { return crypto.randomUUID(); });
 
   function blankDraft() { return { id: null, subject: '', previewText: '', blocks: [], status: 'draft' }; }
   function startEditor(draft) {
@@ -42,7 +46,7 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
   function api(path, options) {
     return fetch(path, Object.assign({ credentials: 'same-origin', headers: { 'Content-Type': 'application/json' } }, options || {})).then(function (response) {
       return response.json().catch(function () { return {}; }).then(function (data) {
-        if (!response.ok) throw new Error(data.error || '요청을 처리하지 못했습니다.');
+        if (!response.ok) { var error = new Error(data.error || '요청을 처리하지 못했습니다.'); error.status = response.status; throw error; }
         return data;
       });
     });
@@ -99,6 +103,112 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
     queueSave(0);
     refreshDerived();
   }
+  function requestNavigation(proceed) {
+    var plan = navigationPlan(editor, validateDraft().length === 0);
+    if (plan.kind === 'leave') { completeNavigation(proceed); return; }
+    if (plan.kind === 'confirm-discard') { showDiscardDecision(proceed, editor.saveStatus === 'error' ? '저장에 실패했습니다. 변경사항을 버릴까요?' : '입력 내용을 확인해야 저장할 수 있습니다. 변경사항을 버릴까요?'); return; }
+    pendingNavigation = { editor: editor, proceed: proceed };
+    if (editor.saving) { flushAfterSave = flushAfterSave || editor.revision > editor.activeRevision; refreshDerived(); }
+    else queueSave(0);
+  }
+  function completeNavigation(proceed) {
+    pendingNavigation = null;
+    discardNavigation = null;
+    leaveEditor();
+    proceed();
+  }
+  function continueNavigation(savedEditor) {
+    if (!pendingNavigation || pendingNavigation.editor !== savedEditor || savedEditor.dirty || savedEditor.saving) return;
+    var proceed = pendingNavigation.proceed;
+    completeNavigation(proceed);
+  }
+  function showDiscardDecision(proceed, text) {
+    discardNavigation = proceed;
+    if (!editorRefs) return;
+    editorRefs.leaveMessage.textContent = text;
+    editorRefs.leaveGuard.hidden = false;
+    editorRefs.continueEditing.focus();
+  }
+  function dismissDiscardDecision() {
+    discardNavigation = null;
+    pendingNavigation = null;
+    if (editorRefs) editorRefs.leaveGuard.hidden = true;
+  }
+  function discardAndNavigate() {
+    if (!discardNavigation) return;
+    var proceed = discardNavigation;
+    completeNavigation(proceed);
+  }
+  function actionStateText(action, label) {
+    if (action.status === 'pending') return label + ' 요청 중…';
+    if (action.status === 'success') return label + ' 요청을 대기열에 등록했습니다.';
+    if (action.status === 'retryable-error') return label + ' 요청 상태를 확인하지 못했습니다. 같은 키로 다시 시도하세요: ' + action.error;
+    return label + ' 요청을 시작하지 못했습니다: ' + action.error;
+  }
+  function runAction(slot, context, endpoint, body, label, onSuccess, onUpdate) {
+    if (actions.actions.get(slot)?.status === 'pending') return;
+    var action = beginAction(actions, slot, context);
+    onUpdate(action);
+    api(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': action.key }, body: JSON.stringify(body) }).then(function (data) {
+      if (!resolveAction(actions, action, 'success')) return;
+      onUpdate(action);
+      onSuccess(data);
+    }).catch(function (error) {
+      var retryable = !error.status || error.status >= 500;
+      if (!resolveAction(actions, action, retryable ? 'retryable-error' : 'definitive-error', error.message)) return;
+      onUpdate(action);
+    });
+  }
+  function showFullSendConfirmation() {
+    if (!canSend(editor, validateDraft().length === 0) || !editorRefs) return;
+    var confirmationEditor = editor;
+    editorRefs.sendConfirm.replaceChildren(el('p', { className: 'editorial-save-state loading', text: '현재 활성 구독자 수를 확인하는 중…' }));
+    api('/api/admin/newsletter-subscribers?summary=active').then(function (data) {
+      if (editor !== confirmationEditor || !editorRefs) return;
+      var count = Number(data.activeCount || 0);
+      var confirm = el('section', { className: 'editorial-confirm', 'aria-label': '전체 발송 최종 확인' });
+      confirm.append(el('p', { text: '제목: ' + state.subject }), el('p', { text: '현재 활성 구독자 ' + count + '명에게 발송을 시작합니다.' }));
+      confirm.append(button('취소', function () { editorRefs.sendConfirm.replaceChildren(); }), button('최종 발송 시작', function () { startFullSend(count); }, false, 'btn btn-primary btn-sm'));
+      editorRefs.sendConfirm.replaceChildren(confirm);
+    }).catch(function (error) { if (editor === confirmationEditor && editorRefs) editorRefs.sendConfirm.replaceChildren(el('p', { className: 'editorial-error', text: error.message })); });
+  }
+  function startFullSend(count) {
+    var id = state.id;
+    if (!id || !editorRefs) return;
+    var actionEditor = editor;
+    var context = { newsletterId: id, recipientCount: count };
+    runAction('send:' + id, context, '/api/admin/newsletters/' + id + '/send', {}, '전체 발송', function () {
+      if (editor !== actionEditor || !editorRefs) { loadSends(0); return; }
+      state.status = 'sending';
+      editorRefs.sendConfirm.replaceChildren();
+      refreshDerived();
+      setTimeout(function () { loadSends(0); }, 400);
+    }, function (action) {
+      if (editor !== actionEditor || !editorRefs) return;
+      editorRefs.actionStatus.textContent = actionStateText(action, '전체 발송');
+      editorRefs.actionStatus.className = 'editorial-save-state ' + (action.status === 'success' ? 'success' : action.status === 'pending' ? 'loading' : 'error');
+      editorRefs.actionRetry.hidden = action.status !== 'retryable-error';
+      editorRefs.fullButton.disabled = action.status === 'pending';
+      editorRefs.actionRetry.onclick = function () { startFullSend(count); };
+    });
+  }
+  function startFailedRecipientRetry(send) {
+    if (!send || !send.failureCount || !['partial', 'failed'].includes(send.status)) return;
+    var slot = 'retry:' + send.newsletterId + ':' + send.id;
+    message('실패 수신자 재시도 요청 중…');
+    runAction(slot, { newsletterId: send.newsletterId, sendId: send.id }, '/api/admin/newsletters/' + send.newsletterId + '/retry', { sendId: send.id }, '실패 수신자 재시도', function () {
+      loadSends(0);
+    }, function (action) {
+      if (action.status === 'pending') return;
+      if (action.status === 'retryable-error') {
+        empty();
+        var retry = button('같은 키로 재시도', function () { startFailedRecipientRetry(send); }, false, 'btn btn-outline btn-sm');
+        panel.append(el('p', { className: 'newsletter-feedback error', text: actionStateText(action, '실패 수신자 재시도') }), retry);
+      } else if (action.status === 'definitive-error') {
+        message(actionStateText(action, '실패 수신자 재시도'), 'error');
+      }
+    });
+  }
   function saveDraft() {
     saveTimer = null;
     var errors = validateDraft();
@@ -115,10 +225,18 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
       if (!resolved.accepted) return;
       if (resolved.shouldFlush || flushAfterSave) { flushAfterSave = false; queueSave(0); }
       refreshDerived();
+      continueNavigation(requestEditor);
     }).catch(function (error) {
       if (editor !== requestEditor) return;
       var resolved = resolveSaveFailure(requestEditor, operation, error.message);
-      if (resolved.accepted) refreshDerived();
+      if (resolved.accepted) {
+        refreshDerived();
+        if (pendingNavigation?.editor === requestEditor) {
+          var proceed = pendingNavigation.proceed;
+          pendingNavigation = null;
+          showDiscardDecision(proceed, '저장에 실패했습니다. 변경사항을 버릴까요?');
+        }
+      }
     });
   }
   function blockTemplate(type) {
@@ -175,7 +293,7 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
   function renderEditor() {
     empty();
     var top = el('div', { className: 'editorial-heading' }, [el('h2', { text: state.id ? '뉴스레터 초안' : '새 뉴스레터' })]);
-    top.append(button('목록으로', loadNewsletters)); panel.append(top);
+    top.append(button('목록으로', function () { requestNavigation(function () { loadNewslettersNow(0); }); })); panel.append(top);
     var grid = el('div', { className: 'editorial-grid' });
     var form = el('section', { className: 'editorial-editor', 'aria-label': '뉴스레터 편집기' });
     form.append(input('이메일 제목', state.subject, function (value) { state.subject = value; setDirty(false); }));
@@ -188,18 +306,28 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
     var validation = el('p', { className: 'editorial-error', 'aria-live': 'polite', hidden: 'hidden' });
     var retry = button('저장 다시 시도', retrySave, false, 'btn btn-outline btn-sm', { hidden: 'hidden', 'aria-label': '뉴스레터 저장 다시 시도' });
     form.append(status, validation, retry);
+    var leaveGuard = el('section', { className: 'editorial-confirm', role: 'alertdialog', 'aria-label': '저장되지 않은 변경사항', hidden: 'hidden' });
+    var leaveMessage = el('p');
+    var continueEditing = button('계속 편집', dismissDiscardDecision, false, 'btn btn-outline btn-sm');
+    var discard = button('변경사항 버리기', discardAndNavigate, false, 'btn btn-outline btn-sm editorial-danger');
+    leaveGuard.append(leaveMessage, continueEditing, discard);
+    form.append(leaveGuard);
     var testRow = el('div', { className: 'editorial-test' });
     var testEmail = el('input', { type: 'email', placeholder: '테스트 수신 이메일', 'aria-label': '테스트 수신 이메일' });
     var testButton = button('테스트 발송', function () { api('/api/admin/newsletters/' + state.id + '/test-send', { method: 'POST', body: JSON.stringify({ email: testEmail.value }) }).then(function (data) { status.textContent = data.message; }).catch(function (error) { status.textContent = error.message; }); });
-    var fullButton = button('전체 발송', function () { status.textContent = '전체 발송 기능은 준비 중입니다. 발송이 시작되었다고 처리하지 않았습니다.'; }, false, 'btn btn-primary btn-sm');
+    var fullButton = button('전체 발송', showFullSendConfirmation, false, 'btn btn-primary btn-sm');
     testRow.append(testEmail, testButton, fullButton); form.append(testRow); grid.append(form);
+    var actionStatus = el('p', { className: 'editorial-save-state', 'aria-live': 'polite' });
+    var actionRetry = button('같은 키로 발송 재시도', function () {}, false, 'btn btn-outline btn-sm', { hidden: 'hidden' });
+    var sendConfirm = el('div');
+    form.append(actionStatus, actionRetry, sendConfirm);
     var previewPanel = el('aside', { className: 'editorial-preview' }); previewPanel.append(el('h3', { text: '미리보기' }));
     var toggles = el('div', { className: 'editorial-actions', 'aria-label': '미리보기 너비' });
     var desktopToggle = button('데스크톱 640', function () { previewMode = 'desktop'; refreshDerived(); }, false, undefined, { 'aria-pressed': String(previewMode === 'desktop') });
     var mobileToggle = button('모바일 375', function () { previewMode = 'mobile'; refreshDerived(); }, false, undefined, { 'aria-pressed': String(previewMode === 'mobile') });
     toggles.append(desktopToggle, mobileToggle);
     var previewHolder = el('div'); previewPanel.append(toggles, previewHolder); grid.append(previewPanel); panel.append(grid);
-    editorRefs = { status: status, validation: validation, retry: retry, testButton: testButton, fullButton: fullButton, desktopToggle: desktopToggle, mobileToggle: mobileToggle, preview: previewHolder };
+    editorRefs = { status: status, validation: validation, retry: retry, leaveGuard: leaveGuard, leaveMessage: leaveMessage, continueEditing: continueEditing, testButton: testButton, fullButton: fullButton, actionStatus: actionStatus, actionRetry: actionRetry, sendConfirm: sendConfirm, desktopToggle: desktopToggle, mobileToggle: mobileToggle, preview: previewHolder };
     refreshDerived();
   }
   function newDraft() { editor = startEditor(blankDraft()); state = editor.draft; renderEditor(); }
@@ -216,12 +344,18 @@ import { beginSave, canSend, createEditorState, markDirty, resolveSaveFailure, r
   }
   function selectTab(name) { Object.keys(tabs).forEach(function (key) { tabs[key].classList.toggle('is-active', key === name); }); }
   function renderList(heading, content) { empty(); panel.append(el('h2', { className: 'editorial-list-title', text: heading }), content); }
-  function loadUsers() { leaveEditor(); selectTab('users'); message('불러오는 중...'); api('/api/admin/users').then(function (data) { var users = data.users || []; renderList('회원 목록', users.length ? table(['ID', '이메일', '생년월일', '구분', '보호자(법정대리인)', '답변수', '가입일'], users.map(function (u) { return [u.id, u.email + (u.is_admin ? ' 🛡️' : ''), u.birth_date, u.is_minor ? '14세 미만' : '성인', u.is_minor ? [u.guardian_name, u.guardian_relation, u.guardian_contact, u.guardian_consent ? '동의' : '미동의'].filter(Boolean).join(' · ') : '-', u.answer_count, u.created_at]; })) : el('p', { text: '회원이 없습니다.' })); }).catch(function (error) { message(error.message, 'error'); }); }
-  function loadAnswers() { leaveEditor(); selectTab('answers'); message('불러오는 중...'); api('/api/admin/answers').then(function (data) { var answers = data.answers || []; renderList('답변 목록', answers.length ? table(['회원', '문항키', '질문', '답변', '페이지', '저장시각'], answers.map(function (a) { return [a.email, a.item_key, a.prompt, a.answer, a.page_url, a.updated_at]; })) : el('p', { text: '저장된 답변이 없습니다.' })); }).catch(function (error) { message(error.message, 'error'); }); }
-  function loadNewsletters() { leaveEditor(); selectTab('newsletters'); message('불러오는 중...'); api('/api/admin/newsletters').then(function (data) { empty(); var heading = el('div', { className: 'editorial-heading' }, [el('h2', { text: '뉴스레터' })]); heading.append(button('새 뉴스레터 작성', newDraft, false, 'btn btn-primary btn-sm')); panel.append(heading); var rows = data.newsletters || []; panel.append(rows.length ? table(['제목', '상태', '최종 수정', '작성자', '발송 시각', '대상'], rows.map(function (item) { return [button(item.subject, function () { editor = startEditor(item); state = editor.draft; renderEditor(); }, false, 'editorial-link'), item.status, item.updatedAt, item.authorEmail || '-', item.sentAt || '-', item.targetCount || 0]; })) : el('p', { text: '작성한 뉴스레터가 없습니다.' })); }).catch(function (error) { message(error.message, 'error'); }); }
-  function loadSubscribers(offset) { leaveEditor(); selectTab('subscribers'); message('불러오는 중...'); var limit = 50; api('/api/admin/newsletter-subscribers?limit=' + limit + '&offset=' + offset).then(function (data) { empty(); panel.append(el('h2', { className: 'editorial-list-title', text: '구독자' })); var rows = data.subscribers || []; panel.append(rows.length ? table(['이메일', '상태', '동의 시각', '확인 시각', '취소 시각'], rows.map(function (s) { return [s.email, s.status, s.consentAt, s.confirmedAt || '-', s.unsubscribedAt || '-']; })) : el('p', { text: offset ? '이 페이지에 구독자가 없습니다.' : '구독자가 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, loadSubscribers)); }).catch(function (error) { message(error.message, 'error'); }); }
-  function loadSends(offset) { leaveEditor(); selectTab('sends'); message('불러오는 중...'); var limit = 50; api('/api/admin/newsletter-sends?limit=' + limit + '&offset=' + offset).then(function (data) { empty(); panel.append(el('h2', { className: 'editorial-list-title', text: '발송 기록' })); var rows = data.sends || []; panel.append(rows.length ? table(['뉴스레터', '상태', '대상', '성공', '실패', '시작', '완료', '수신 내역'], rows.map(function (s) { return [s.subject, s.status, s.targetCount, s.successCount, s.failureCount, s.startedAt || '-', s.completedAt || '-', button('수신 내역', function () { loadDeliveries(s.id, 0); }, false)]; })) : el('p', { text: offset ? '이 페이지에 발송 기록이 없습니다.' : '발송 기록이 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, loadSends)); }).catch(function (error) { message(error.message, 'error'); }); }
-  function loadDeliveries(sendId, offset) { leaveEditor(); selectTab('sends'); message('수신 내역을 불러오는 중...'); var limit = 50; api('/api/admin/newsletter-sends?sendId=' + encodeURIComponent(sendId) + '&limit=' + limit + '&offset=' + offset).then(function (data) { empty(); var heading = el('div', { className: 'editorial-heading' }, [el('h2', { text: '수신 내역' })]); heading.append(button('발송 기록으로', function () { loadSends(0); })); panel.append(heading); var rows = data.deliveries || []; panel.append(rows.length ? table(['이메일', '상태', '오류 코드', '오류 내용', '발송 시각', '변경 시각'], rows.map(function (d) { return [d.email, d.status, d.errorCode || '-', d.errorMessage || '-', d.sentAt || '-', d.updatedAt || '-']; })) : el('p', { text: offset ? '이 페이지에 수신 내역이 없습니다.' : '수신 내역이 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, function (nextOffset) { loadDeliveries(sendId, nextOffset); })); }).catch(function (error) { message(error.message, 'error'); }); }
+  function loadUsers() { requestNavigation(loadUsersNow); }
+  function loadUsersNow() { leaveEditor(); selectTab('users'); message('불러오는 중...'); api('/api/admin/users').then(function (data) { var users = data.users || []; renderList('회원 목록', users.length ? table(['ID', '이메일', '생년월일', '구분', '보호자(법정대리인)', '답변수', '가입일'], users.map(function (u) { return [u.id, u.email + (u.is_admin ? ' 🛡️' : ''), u.birth_date, u.is_minor ? '14세 미만' : '성인', u.is_minor ? [u.guardian_name, u.guardian_relation, u.guardian_contact, u.guardian_consent ? '동의' : '미동의'].filter(Boolean).join(' · ') : '-', u.answer_count, u.created_at]; })) : el('p', { text: '회원이 없습니다.' })); }).catch(function (error) { message(error.message, 'error'); }); }
+  function loadAnswers() { requestNavigation(loadAnswersNow); }
+  function loadAnswersNow() { leaveEditor(); selectTab('answers'); message('불러오는 중...'); api('/api/admin/answers').then(function (data) { var answers = data.answers || []; renderList('답변 목록', answers.length ? table(['회원', '문항키', '질문', '답변', '페이지', '저장시각'], answers.map(function (a) { return [a.email, a.item_key, a.prompt, a.answer, a.page_url, a.updated_at]; })) : el('p', { text: '저장된 답변이 없습니다.' })); }).catch(function (error) { message(error.message, 'error'); }); }
+  function loadNewsletters(offset) { requestNavigation(function () { loadNewslettersNow(offset || 0); }); }
+  function loadNewslettersNow(offset) { leaveEditor(); selectTab('newsletters'); message('불러오는 중...'); var limit = 50; api('/api/admin/newsletters?limit=' + limit + '&offset=' + offset).then(function (data) { empty(); var heading = el('div', { className: 'editorial-heading' }, [el('h2', { text: '뉴스레터' })]); heading.append(button('새 뉴스레터 작성', newDraft, false, 'btn btn-primary btn-sm')); panel.append(heading); var rows = data.newsletters || []; panel.append(rows.length ? table(['제목', '상태', '최종 수정', '작성자', '발송 시각', '대상'], rows.map(function (item) { return [button(item.subject, function () { editor = startEditor(item); state = editor.draft; renderEditor(); }, false, 'editorial-link'), item.status, item.updatedAt, item.authorEmail || '-', item.sentAt || '-', item.targetCount || 0]; })) : el('p', { text: offset ? '이 페이지에 뉴스레터가 없습니다.' : '작성한 뉴스레터가 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, loadNewsletters)); }).catch(function (error) { message(error.message, 'error'); }); }
+  function loadSubscribers(offset) { requestNavigation(function () { loadSubscribersNow(offset || 0); }); }
+  function loadSubscribersNow(offset) { leaveEditor(); selectTab('subscribers'); message('불러오는 중...'); var limit = 50; api('/api/admin/newsletter-subscribers?limit=' + limit + '&offset=' + offset).then(function (data) { empty(); panel.append(el('h2', { className: 'editorial-list-title', text: '구독자' })); var rows = data.subscribers || []; panel.append(rows.length ? table(['이메일', '상태', '동의 시각', '확인 시각', '취소 시각'], rows.map(function (s) { return [s.email, s.status, s.consentAt, s.confirmedAt || '-', s.unsubscribedAt || '-']; })) : el('p', { text: offset ? '이 페이지에 구독자가 없습니다.' : '구독자가 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, loadSubscribers)); }).catch(function (error) { message(error.message, 'error'); }); }
+  function loadSends(offset) { requestNavigation(function () { loadSendsNow(offset || 0); }); }
+  function loadSendsNow(offset) { leaveEditor(); selectTab('sends'); message('불러오는 중...'); var limit = 50; api('/api/admin/newsletter-sends?limit=' + limit + '&offset=' + offset).then(function (data) { empty(); panel.append(el('h2', { className: 'editorial-list-title', text: '발송 기록' })); var rows = data.sends || []; panel.append(rows.length ? table(['뉴스레터', '상태', '대상', '성공', '실패', '시작', '완료', '수신 내역', '재시도'], rows.map(function (s) { return [s.subject, s.status, s.targetCount, s.successCount, s.failureCount, s.startedAt || '-', s.completedAt || '-', button('수신 내역', function () { loadDeliveries(s.id, 0); }, false), s.failureCount > 0 && ['partial', 'failed'].includes(s.status) ? button('실패 수신자 재시도', function () { startFailedRecipientRetry(s); }, false) : '-']; })) : el('p', { text: offset ? '이 페이지에 발송 기록이 없습니다.' : '발송 기록이 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, loadSends)); }).catch(function (error) { message(error.message, 'error'); }); }
+  function loadDeliveries(sendId, offset) { requestNavigation(function () { loadDeliveriesNow(sendId, offset || 0); }); }
+  function loadDeliveriesNow(sendId, offset) { leaveEditor(); selectTab('sends'); message('수신 내역을 불러오는 중...'); var limit = 50; api('/api/admin/newsletter-sends?sendId=' + encodeURIComponent(sendId) + '&limit=' + limit + '&offset=' + offset).then(function (data) { empty(); var heading = el('div', { className: 'editorial-heading' }, [el('h2', { text: '수신 내역' })]); heading.append(button('발송 기록으로', function () { loadSends(0); })); panel.append(heading); var rows = data.deliveries || []; panel.append(rows.length ? table(['이메일', '상태', '오류 코드', '오류 내용', '발송 시각', '변경 시각'], rows.map(function (d) { return [d.email, d.status, d.errorCode || '-', d.errorMessage || '-', d.sentAt || '-', d.updatedAt || '-']; })) : el('p', { text: offset ? '이 페이지에 수신 내역이 없습니다.' : '수신 내역이 없습니다.' })); panel.append(paginationControls(offset, limit, rows.length === limit, function (nextOffset) { loadDeliveries(sendId, nextOffset); })); }).catch(function (error) { message(error.message, 'error'); }); }
   tabs.users.addEventListener('click', loadUsers); tabs.answers.addEventListener('click', loadAnswers); tabs.newsletters.addEventListener('click', loadNewsletters); tabs.subscribers.addEventListener('click', function () { loadSubscribers(0); }); tabs.sends.addEventListener('click', function () { loadSends(0); });
   window.AilitAuth.me().then(function (data) { if (!data.user.isAdmin) { adminInfo.textContent = '관리자 권한이 없습니다.'; message('이 페이지는 관리자만 볼 수 있습니다.', 'error'); return; } adminInfo.textContent = data.user.email + ' (관리자)'; loadUsers(); }).catch(function () { location.href = 'login.html'; });
 }());

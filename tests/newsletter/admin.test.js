@@ -33,6 +33,7 @@ async function makeAdminContext({
   subscribers = [],
   sends = [],
   deliveries = [],
+  activeSubscriberCount = 0,
   path = '/api/admin/newsletters',
 } = {}) {
   const queries = [];
@@ -50,6 +51,7 @@ async function makeAdminContext({
             async first() {
               queries.push({ sql, params, method: 'first' });
               if (sql.includes('SELECT * FROM users')) return user;
+              if (sql.includes('COUNT(*) AS active_count') && sql.includes("status = 'active'")) return { active_count: activeSubscriberCount };
               if (sql.includes('FROM newsletters') && sql.includes('WHERE id = ?')) return storedNewsletter;
               if (sql.includes('INSERT INTO newsletters')) return { id: 22 };
               return null;
@@ -161,6 +163,13 @@ test('subscriber and send listings validate pagination and do not expose secret 
   assert.equal((await listSends(invalidDeliveryCtx)).status, 400);
 });
 
+test('subscriber summary returns the current active recipient count for send confirmation', async () => {
+  const ctx = await makeAdminContext({ path: '/api/admin/newsletter-subscribers?summary=active', activeSubscriberCount: 37 });
+  const response = await listSubscribers(ctx);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { activeCount: 37 });
+});
+
 test('admin page keeps member and answer panels while loading the accessible editorial room', async () => {
   const [html, script] = await Promise.all([
     readFile(new URL('../../admin.html', import.meta.url), 'utf8'),
@@ -184,4 +193,10 @@ test('admin page keeps member and answer panels while loading the accessible edi
   assert.match(script, /function refreshDerived\(/);
   assert.match(script, /function paginationControls\(/);
   assert.match(script, /function loadDeliveries\(/);
+  assert.match(script, /requestNavigation/);
+  assert.match(script, /newsletter-subscribers\?summary=active/);
+  assert.match(script, /\/api\/admin\/newsletters\/.*\/send/);
+  assert.match(script, /\/api\/admin\/newsletters\/.*\/retry/);
+  assert.match(script, /Idempotency-Key/);
+  assert.match(script, /function loadNewsletters\(offset\)/);
 });

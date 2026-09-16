@@ -9,6 +9,7 @@ export function createEditorState(draft, identity) {
     revision: 0,
     nextOperationId: 1,
     activeOperationId: null,
+    activeRevision: null,
     dirty: false,
     saving: false,
     saveStatus: 'saved',
@@ -37,6 +38,7 @@ export function beginSave(editor) {
     },
   };
   editor.activeOperationId = operation.id;
+  editor.activeRevision = operation.revision;
   editor.saving = true;
   editor.saveStatus = 'saving';
   editor.error = '';
@@ -52,6 +54,7 @@ function accepts(editor, operation) {
 export function resolveSaveSuccess(editor, operation, serverDraft) {
   if (!accepts(editor, operation)) return { accepted: false, shouldFlush: false };
   editor.activeOperationId = null;
+  editor.activeRevision = null;
   editor.saving = false;
   if (editor.draft.id == null && Number.isSafeInteger(serverDraft?.id) && serverDraft.id > 0) editor.draft.id = serverDraft.id;
   if (operation.revision !== editor.revision) {
@@ -68,6 +71,7 @@ export function resolveSaveSuccess(editor, operation, serverDraft) {
 export function resolveSaveFailure(editor, operation, error) {
   if (!accepts(editor, operation)) return { accepted: false };
   editor.activeOperationId = null;
+  editor.activeRevision = null;
   editor.saving = false;
   editor.dirty = true;
   editor.saveStatus = 'error';
@@ -81,4 +85,10 @@ export function canSend(editor, isValid) {
     && !editor.dirty
     && !editor.saving
     && Boolean(isValid);
+}
+
+export function navigationPlan(editor, isValid) {
+  if (!editor.dirty && !editor.saving) return { kind: 'leave' };
+  if (!isValid || editor.saveStatus === 'error') return { kind: 'confirm-discard' };
+  return { kind: 'save-before-leave' };
 }

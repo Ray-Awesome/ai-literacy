@@ -5,6 +5,7 @@ import {
   canSend,
   createEditorState,
   markDirty,
+  navigationPlan,
   resolveSaveFailure,
   resolveSaveSuccess,
 } from '../../js/admin-editorial-state.js';
@@ -64,4 +65,28 @@ test('send actions are immediately blocked for dirty, saving, non-draft, or inva
   assert.equal(canSend(editor, false), false);
   editor.draft.status = 'sending';
   assert.equal(canSend(editor, true), false);
+});
+
+test('navigation flushes valid debounce and in-flight edits, but requires discard for failed or invalid drafts', () => {
+  const pending = createEditorState(draft(), 'draft-12');
+  markDirty(pending);
+  assert.equal(navigationPlan(pending, true).kind, 'save-before-leave');
+
+  const inFlight = createEditorState(draft(), 'draft-12');
+  markDirty(inFlight);
+  beginSave(inFlight);
+  assert.equal(inFlight.activeRevision, 1);
+  inFlight.draft.subject = '새 편집';
+  markDirty(inFlight);
+  assert.equal(navigationPlan(inFlight, true).kind, 'save-before-leave');
+
+  const failed = createEditorState(draft(), 'draft-12');
+  markDirty(failed);
+  const operation = beginSave(failed);
+  resolveSaveFailure(failed, operation, '저장 실패');
+  assert.equal(navigationPlan(failed, true).kind, 'confirm-discard');
+
+  const invalid = createEditorState(draft(), 'draft-12');
+  markDirty(invalid);
+  assert.equal(navigationPlan(invalid, false).kind, 'confirm-discard');
 });
