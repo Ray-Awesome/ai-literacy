@@ -8,3 +8,8 @@ test('versioned delivery outbox migration adds every runtime queue column for ex
   assert.match(sql, /ALTER TABLE newsletter_deliveries ADD COLUMN queue_claim_key TEXT/);
   assert.match(sql, /ALTER TABLE newsletter_deliveries ADD COLUMN queue_claimed_at TEXT/);
 });
+
+test('versioned retry migration binds a replay key to its source send', async () => {
+  const sql = await readFile(new URL('../../migrations/0003_newsletter_retry_source.sql', import.meta.url), 'utf8');
+  assert.match(sql, /ALTER TABLE newsletter_sends ADD COLUMN source_send_id INTEGER/);
+});

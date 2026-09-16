@@ -22,14 +22,16 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
   function run(sql, params) {
     if (sql.includes('SELECT send.id AS send_id')) return { ...rows.newsletter, send_id: 3, newsletter_id: 8 };
     if (sql.includes("SET status = 'failed', error_code = 'inactive_subscriber'")) {
-      const [sendId, ...ids] = params;
+      const [sendId, idsJson] = params;
+      const ids = JSON.parse(idsJson);
       rows.deliveries.filter((delivery) => delivery.send_id === sendId && ids.includes(delivery.id)
         && rows.subscribers.find((subscriber) => subscriber.id === delivery.subscriber_id)?.status !== 'active')
         .forEach((delivery) => { delivery.status = 'failed'; });
       return null;
     }
     if (sql.includes('SELECT delivery.id, delivery.subscriber_id')) {
-      const [sendId, ...ids] = params;
+      const [sendId, idsJson] = params;
+      const ids = JSON.parse(idsJson);
       return rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && ids.includes(delivery.id))
         .map((delivery) => ({ ...delivery, email: rows.subscribers.find((subscriber) => subscriber.id === delivery.subscriber_id).email }));
     }
@@ -46,7 +48,8 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
       return null;
     }
     if (sql.includes("error_code = 'queue_retries_exhausted'")) {
-      const [sendId, ...ids] = params;
+      const [sendId, idsJson] = params;
+      const ids = JSON.parse(idsJson);
       rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && ids.includes(delivery.id))
         .forEach((delivery) => { delivery.status = 'failed'; });
       return null;
@@ -172,6 +175,9 @@ test('redelivery after a post-acceptance D1 failure reuses the exact Resend idem
   };
   try {
     await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, env), /D1 write failed/);
+    env.SESSION_SECRET = 'rotated-secret-at-least-32-characters';
+    env.PUBLIC_SITE_URL = 'https://rotated.example.test';
+    env.NEWSLETTER_FROM = 'AILIT <rotated@site.test>';
     await processMessage({ sendId: 3, deliveryIds: [21, 22] }, env);
   } finally {
     globalThis.fetch = originalFetch;
@@ -188,6 +194,12 @@ test('concurrent Resend idempotency and missing worker configuration remain retr
     await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, concurrent.env), /Resend batch delivery failed/);
   } finally { globalThis.fetch = originalFetch; }
   assert.equal(concurrent.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
+  const domain = workerEnv({ response: new Response(JSON.stringify({ code: 'validation_error' }), { status: 403 }) });
+  globalThis.fetch = async () => domain.env.response;
+  try {
+    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, domain.env), /Resend batch delivery failed/);
+  } finally { globalThis.fetch = originalFetch; }
+  assert.equal(domain.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
   const missing = workerEnv();
   delete missing.env.SESSION_SECRET;
   await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, missing.env), /Missing SESSION_SECRET/);

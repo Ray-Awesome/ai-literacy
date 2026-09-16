@@ -23,11 +23,11 @@ async function findRetrySource(env, sendId, newsletterIdValue) {
 async function createRetrySend(env, sourceId, newsletterIdValue, key) {
   const result = await env.DB.batch([
     env.DB.prepare(`
-      INSERT INTO newsletter_sends (newsletter_id, idempotency_key, status, started_at)
-      SELECT ?, ?, 'queued', datetime('now')
+      INSERT INTO newsletter_sends (newsletter_id, idempotency_key, status, started_at, source_send_id)
+      SELECT ?, ?, 'queued', datetime('now'), ?
       WHERE EXISTS (SELECT 1 FROM newsletter_sends WHERE id = ? AND newsletter_id = ? AND status IN ('partial', 'failed'))
       RETURNING id, newsletter_id, status
-    `).bind(newsletterIdValue, key, sourceId, newsletterIdValue),
+    `).bind(newsletterIdValue, key, sourceId, sourceId, newsletterIdValue),
     env.DB.prepare(`
       INSERT INTO newsletter_deliveries (send_id, subscriber_id, status)
       SELECT retry.id, delivery.subscriber_id, 'pending'
@@ -62,9 +62,9 @@ export async function onRequestPost({ request, env, params }) {
 
   try {
     let send = await env.DB.prepare(`
-      SELECT id, newsletter_id, status FROM newsletter_sends WHERE idempotency_key = ?
+      SELECT id, newsletter_id, status, source_send_id FROM newsletter_sends WHERE idempotency_key = ?
     `).bind(key).first();
-    if (send && send.newsletter_id !== newsletterIdValue) return json({ error: 'Idempotency-Key가 다른 발송에 사용되었습니다.' }, 409);
+    if (send && (send.newsletter_id !== newsletterIdValue || send.source_send_id !== sourceId)) return json({ error: 'Idempotency-Key가 다른 재시도 요청에 사용되었습니다.' }, 409);
     if (!send) {
       const [newsletter, source] = await Promise.all([
         findNewsletter(env, newsletterIdValue), findRetrySource(env, sourceId, newsletterIdValue),
@@ -74,7 +74,7 @@ export async function onRequestPost({ request, env, params }) {
       try {
         send = await createRetrySend(env, source.id, newsletterIdValue, key);
       } catch {
-        send = await env.DB.prepare(`SELECT id, newsletter_id, status FROM newsletter_sends WHERE idempotency_key = ?`).bind(key).first();
+        send = await env.DB.prepare(`SELECT id, newsletter_id, status, source_send_id FROM newsletter_sends WHERE idempotency_key = ?`).bind(key).first();
       }
     }
     if (!send) return json({ error: '재시도 발송을 만들지 못했습니다.' }, 409);

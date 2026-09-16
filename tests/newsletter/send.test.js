@@ -76,7 +76,7 @@ async function bulkContext({ activeSubscribers = 0, idempotencyKey = 'fixed-key'
     }
     if (sql.includes('SET queued_at = datetime')) {
       const [sendId, claim, ...ids] = params;
-      rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && !delivery.queued_at && delivery.queue_claim_key === claim && ids.includes(delivery.id))
+      rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && !delivery.queued_at && delivery.queue_claim_key === claim && (!ids.length || ids.includes(delivery.id)))
         .forEach((delivery) => { delivery.queued_at = 'now'; });
       return null;
     }
@@ -209,7 +209,7 @@ test('failed-only retry snapshots only subscribers who are still active', async 
     }
     if (sql.includes('SET queued_at = datetime')) {
       const [, claim, ...ids] = params;
-      rows.deliveries.filter((delivery) => delivery.queue_claim_key === claim && ids.includes(delivery.id)).forEach((delivery) => { delivery.queued_at = 'now'; });
+      rows.deliveries.filter((delivery) => delivery.queue_claim_key === claim && (!ids.length || ids.includes(delivery.id))).forEach((delivery) => { delivery.queued_at = 'now'; });
       return null;
     }
     if (sql.includes("SET status = 'queued'")) return null;
@@ -231,4 +231,23 @@ test('failed-only retry snapshots only subscribers who are still active', async 
   assert.equal((await retrySend(ctx)).status, 202);
   assert.deepEqual(rows.deliveries.map((delivery) => delivery.subscriber_id), [1]);
   assert.deepEqual(queueMessages[0].deliveryIds, [1]);
+});
+
+test('retry rejects an idempotency key replayed for a different failed source send', async () => {
+  const secret = 'test-secret-at-least-32-characters';
+  const token = await signToken({ uid: 1, exp: Date.now() + 60_000 }, secret);
+  const DB = {
+    prepare(sql) {
+      return { bind: () => ({ first: async () => {
+        if (sql.includes('SELECT * FROM users')) return { id: 1, is_admin: 1 };
+        if (sql.includes('idempotency_key')) return { id: 20, newsletter_id: 4, status: 'queued', source_send_id: 9 };
+        return null;
+      } }) };
+    },
+  };
+  const response = await retrySend({
+    request: new Request('https://site.test/api/admin/newsletters/4/retry', { method: 'POST', headers: { Cookie: `ailit_session=${token}`, 'Content-Type': 'application/json', 'Idempotency-Key': 'retry-key' }, body: JSON.stringify({ sendId: 10 }) }),
+    env: { DB, SESSION_SECRET: secret }, params: { id: '4' },
+  });
+  assert.equal(response.status, 409);
 });

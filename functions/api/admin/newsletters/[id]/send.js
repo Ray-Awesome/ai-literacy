@@ -51,13 +51,12 @@ async function claimNextDeliveries(env, sendId) {
   return deliveryIds.length ? { claimKey, deliveryIds } : null;
 }
 
-async function markQueued(env, sendId, claimKey, deliveryIds) {
-  const placeholders = deliveryIds.map(() => '?').join(', ');
+async function markQueued(env, sendId, claimKey) {
   await env.DB.prepare(`
     UPDATE newsletter_deliveries
     SET queued_at = datetime('now'), updated_at = datetime('now')
-    WHERE send_id = ? AND status = 'pending' AND queued_at IS NULL AND queue_claim_key = ? AND id IN (${placeholders})
-  `).bind(sendId, claimKey, ...deliveryIds).run();
+    WHERE send_id = ? AND status = 'pending' AND queued_at IS NULL AND queue_claim_key = ?
+  `).bind(sendId, claimKey).run();
 }
 
 async function enqueuePending(env, sendId) {
@@ -68,7 +67,7 @@ async function enqueuePending(env, sendId) {
     if (!claim?.deliveryIds.length) break;
     if (!env?.NEWSLETTER_QUEUE || typeof env.NEWSLETTER_QUEUE.send !== 'function') throw new Error('Queue producer is unavailable');
     await env.NEWSLETTER_QUEUE.send({ sendId, deliveryIds: claim.deliveryIds, queueClaimKey: claim.claimKey });
-    await markQueued(env, sendId, claim.claimKey, claim.deliveryIds);
+    await markQueued(env, sendId, claim.claimKey);
     queued += claim.deliveryIds.length;
   }
   await env.DB.prepare(`

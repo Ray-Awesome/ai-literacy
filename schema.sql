@@ -81,6 +81,7 @@ CREATE INDEX IF NOT EXISTS idx_newsletters_status ON newsletters(status);
 CREATE TABLE IF NOT EXISTS newsletter_sends (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   newsletter_id     INTEGER NOT NULL,
+  source_send_id    INTEGER,
   idempotency_key   TEXT    NOT NULL UNIQUE,
   status            TEXT    NOT NULL DEFAULT 'queued'
                             CHECK(status IN ('queued','sending','completed','partial','failed')),

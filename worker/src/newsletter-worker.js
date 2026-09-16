@@ -10,10 +10,9 @@ function validMessage(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body) || !Number.isSafeInteger(body.sendId) || body.sendId < 1
     || !Array.isArray(body.deliveryIds) || body.deliveryIds.length < 1 || body.deliveryIds.length > MAX_BATCH_SIZE) return null;
   if (body.deliveryIds.some((id) => !Number.isSafeInteger(id) || id < 1) || new Set(body.deliveryIds).size !== body.deliveryIds.length) return null;
-  return { sendId: body.sendId, deliveryIds: body.deliveryIds };
+  if (body.queueClaimKey !== undefined && (typeof body.queueClaimKey !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.queueClaimKey))) return null;
+  return { sendId: body.sendId, deliveryIds: body.deliveryIds, queueClaimKey: body.queueClaimKey };
 }
-
-function placeholders(ids) { return ids.map(() => '?').join(', '); }
 
 function workerConfig(env) {
   for (const key of ['SESSION_SECRET', 'NEWSLETTER_FROM', 'PUBLIC_SITE_URL', 'RESEND_API_KEY']) {
@@ -30,13 +29,13 @@ async function frozenNewsletter(env, sendId) {
 }
 
 async function pendingDeliveries(env, sendId, deliveryIds) {
-  const list = placeholders(deliveryIds);
+  const ids = JSON.stringify(deliveryIds);
   await env.DB.prepare(`UPDATE newsletter_deliveries SET status = 'failed', error_code = 'inactive_subscriber', error_message = 'Subscriber is no longer active', updated_at = datetime('now')
-    WHERE send_id = ? AND status = 'pending' AND id IN (${list}) AND EXISTS (SELECT 1 FROM newsletter_subscribers WHERE id = newsletter_deliveries.subscriber_id AND status <> 'active')`).bind(sendId, ...deliveryIds).run();
+    WHERE send_id = ? AND status = 'pending' AND id IN (SELECT value FROM json_each(?)) AND EXISTS (SELECT 1 FROM newsletter_subscribers WHERE id = newsletter_deliveries.subscriber_id AND status <> 'active')`).bind(sendId, ids).run();
   const result = await env.DB.prepare(`SELECT delivery.id, delivery.subscriber_id, subscriber.email FROM newsletter_deliveries AS delivery
     JOIN newsletter_subscribers AS subscriber ON subscriber.id = delivery.subscriber_id
-    WHERE delivery.send_id = ? AND delivery.status = 'pending' AND subscriber.status = 'active' AND delivery.id IN (${list})
-    ORDER BY CASE delivery.id ${deliveryIds.map((id, index) => `WHEN ${id} THEN ${index}`).join(' ')} END`).bind(sendId, ...deliveryIds).all();
+    WHERE delivery.send_id = ? AND delivery.status = 'pending' AND subscriber.status = 'active' AND delivery.id IN (SELECT value FROM json_each(?))
+    ORDER BY CASE delivery.id ${deliveryIds.map((id, index) => `WHEN ${id} THEN ${index}`).join(' ')} END`).bind(sendId, ids).all();
   return result.results || [];
 }
 
@@ -103,10 +102,12 @@ export async function processMessage(body, env) {
     await markResult(env, message.sendId, deliveries, { code: 'invalid_frozen_content', message: 'Frozen newsletter content is invalid' }, true);
     await recomputeSend(env, message.sendId); return;
   }
-  const key = `newsletter-${message.sendId}-${await sha256(JSON.stringify(messages))}`;
+  const key = message.queueClaimKey
+    ? `newsletter-${message.sendId}-claim-${message.queueClaimKey}`
+    : `newsletter-${message.sendId}-${await sha256(JSON.stringify(message.deliveryIds))}`;
   let result;
   try { result = await requestResend(env, messages, key); } catch (error) {
-    if (!(error?.status >= 400 && error.status < 500 && PERMANENT_RESEND_CODES.has(error.code))) throw error;
+    if (!([400, 422].includes(error?.status) && PERMANENT_RESEND_CODES.has(error.code))) throw error;
     await markResult(env, message.sendId, deliveries, { code: error.code, message: 'Email provider rejected this delivery' }, true);
     await recomputeSend(env, message.sendId); return;
   }
@@ -117,9 +118,9 @@ export async function processMessage(body, env) {
 export async function reconcileDlq(body, env) {
   const message = validMessage(body);
   if (!message) return;
-  const list = placeholders(message.deliveryIds);
+  const ids = JSON.stringify(message.deliveryIds);
   await env.DB.prepare(`UPDATE newsletter_deliveries SET status = 'failed', error_code = 'queue_retries_exhausted', error_message = 'Queue retries were exhausted', updated_at = datetime('now')
-    WHERE send_id = ? AND status = 'pending' AND id IN (${list})`).bind(message.sendId, ...message.deliveryIds).run();
+    WHERE send_id = ? AND status = 'pending' AND id IN (SELECT value FROM json_each(?))`).bind(message.sendId, ids).run();
   await recomputeSend(env, message.sendId);
 }
 
