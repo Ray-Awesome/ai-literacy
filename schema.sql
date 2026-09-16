@@ -27,3 +27,77 @@ CREATE TABLE IF NOT EXISTS answers (
 );
 
 CREATE INDEX IF NOT EXISTS idx_answers_user ON answers(user_id);
+
+CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+  id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+  email                     TEXT    NOT NULL UNIQUE,
+  status                    TEXT    NOT NULL DEFAULT 'pending'
+                                      CHECK(status IN ('pending','active','unsubscribed','bounced','complained')),
+  consent_at                TEXT    NOT NULL,
+  confirmed_at              TEXT,
+  unsubscribed_at           TEXT,
+  confirmation_token_hash   TEXT,
+  confirmation_expires_at   TEXT,
+  created_at                TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at                TEXT    NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_status ON newsletter_subscribers(status);
+
+CREATE TABLE IF NOT EXISTS newsletters (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  subject         TEXT    NOT NULL,
+  preview_text    TEXT    NOT NULL DEFAULT '',
+  content_json    TEXT    NOT NULL,
+  status          TEXT    NOT NULL DEFAULT 'draft'
+                          CHECK(status IN ('draft','sending','sent','failed')),
+  created_by      INTEGER NOT NULL,
+  created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+  sent_at         TEXT,
+  FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletters_status ON newsletters(status);
+
+CREATE TABLE IF NOT EXISTS newsletter_sends (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  newsletter_id     INTEGER NOT NULL,
+  idempotency_key   TEXT    NOT NULL UNIQUE,
+  status            TEXT    NOT NULL DEFAULT 'queued'
+                            CHECK(status IN ('queued','sending','completed','partial','failed')),
+  target_count      INTEGER NOT NULL DEFAULT 0,
+  success_count     INTEGER NOT NULL DEFAULT 0,
+  failure_count     INTEGER NOT NULL DEFAULT 0,
+  started_at        TEXT,
+  completed_at      TEXT,
+  FOREIGN KEY (newsletter_id) REFERENCES newsletters(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletter_sends_newsletter ON newsletter_sends(newsletter_id);
+
+CREATE TABLE IF NOT EXISTS newsletter_deliveries (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  send_id           INTEGER NOT NULL,
+  subscriber_id     INTEGER NOT NULL,
+  status            TEXT    NOT NULL DEFAULT 'pending'
+                            CHECK(status IN ('pending','sent','failed','bounced','complained')),
+  resend_message_id TEXT,
+  error_code        TEXT,
+  error_message     TEXT,
+  sent_at           TEXT,
+  updated_at        TEXT    NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(send_id, subscriber_id),
+  FOREIGN KEY (send_id) REFERENCES newsletter_sends(id),
+  FOREIGN KEY (subscriber_id) REFERENCES newsletter_subscribers(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletter_deliveries_send_status ON newsletter_deliveries(send_id, status);
+
+CREATE TABLE IF NOT EXISTS newsletter_rate_limits (
+  scope             TEXT    NOT NULL,
+  key_hash          TEXT    NOT NULL,
+  window_started_at INTEGER NOT NULL,
+  count             INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (scope, key_hash)
+);
