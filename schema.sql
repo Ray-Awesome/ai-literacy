@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS newsletter_deliveries (
   error_code        TEXT,
   error_message     TEXT,
   queued_at         TEXT,
+  queue_claim_key   TEXT,
+  queue_claimed_at  TEXT,
   sent_at           TEXT,
   updated_at        TEXT    NOT NULL DEFAULT (datetime('now')),
   UNIQUE(send_id, subscriber_id),

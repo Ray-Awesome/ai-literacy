@@ -35,9 +35,20 @@ async function bulkContext({ activeSubscribers = 0, idempotencyKey = 'fixed-key'
       return rows.sends.find((send) => send.idempotency_key === params[0]) || null;
     }
     if (sql.includes('FROM newsletters WHERE id = ?')) return rows.newsletter.id === params[0] ? rows.newsletter : null;
-    if (sql.includes('SELECT id FROM newsletter_deliveries')) {
-      return rows.deliveries.filter((delivery) => delivery.send_id === params[0] && delivery.status === 'pending' && !delivery.queued_at)
+    if (sql.includes('SELECT COUNT(*) AS target_count')) return { target_count: rows.deliveries.filter((delivery) => delivery.send_id === params[0]).length };
+    if (sql.includes('SELECT queue_claim_key')) {
+      const delivery = rows.deliveries.find((item) => item.send_id === params[0] && item.status === 'pending' && !item.queued_at && item.queue_claim_key);
+      return delivery ? { queue_claim_key: delivery.queue_claim_key } : null;
+    }
+    if (sql.includes('SELECT id FROM newsletter_deliveries') && !sql.includes('SET queue_claim_key')) {
+      return rows.deliveries.filter((delivery) => delivery.send_id === params[0] && delivery.status === 'pending' && !delivery.queued_at && delivery.queue_claim_key === params[1])
         .map(({ id }) => ({ id }));
+    }
+    if (sql.includes('SET queue_claim_key')) {
+      const claim = params[0];
+      const claimed = rows.deliveries.filter((delivery) => delivery.send_id === params[1] && delivery.status === 'pending' && !delivery.queued_at && !delivery.queue_claim_key).slice(0, 100);
+      claimed.forEach((delivery) => { delivery.queue_claim_key = claim; });
+      return claimed.map(({ id }) => ({ id }));
     }
     if (sql.includes("INSERT INTO newsletter_sends") && sql.includes("FROM newsletters")) {
       if (rows.newsletter.status !== 'draft') return null;
@@ -64,8 +75,8 @@ async function bulkContext({ activeSubscribers = 0, idempotencyKey = 'fixed-key'
       return null;
     }
     if (sql.includes('SET queued_at = datetime')) {
-      const [sendId, ...ids] = params;
-      rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && !delivery.queued_at && ids.includes(delivery.id))
+      const [sendId, claim, ...ids] = params;
+      rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && !delivery.queued_at && delivery.queue_claim_key === claim && ids.includes(delivery.id))
         .forEach((delivery) => { delivery.queued_at = 'now'; });
       return null;
     }
@@ -175,7 +186,7 @@ test('failed-only retry snapshots only subscribers who are still active', async 
     if (sql.includes('WHERE idempotency_key = ?')) return rows.sends.find((send) => send.idempotency_key === params[0]) || null;
     if (sql.includes('FROM newsletters WHERE id = ?')) return rows.newsletter;
     if (sql.includes("status IN ('partial', 'failed')")) return { id: 9, newsletter_id: 4, status: 'failed' };
-    if (sql.includes("INSERT INTO newsletter_sends") && sql.includes('VALUES')) {
+    if (sql.includes("INSERT INTO newsletter_sends") && sql.includes('SELECT')) {
       const send = { id: 10, newsletter_id: params[0], idempotency_key: params[1], status: 'queued' };
       rows.sends.push(send);
       return send;
@@ -183,15 +194,22 @@ test('failed-only retry snapshots only subscribers who are still active', async 
     if (sql.includes('INSERT INTO newsletter_deliveries') && sql.includes('JOIN newsletter_subscribers')) {
       rows.sourceDeliveries.filter((delivery) => delivery.status === 'failed')
         .filter((delivery) => rows.subscribers.find((subscriber) => subscriber.id === delivery.subscriber_id)?.status === 'active')
-        .forEach((delivery, index) => rows.deliveries.push({ id: index + 1, send_id: params[0], subscriber_id: delivery.subscriber_id, status: 'pending' }));
+        .forEach((delivery, index) => rows.deliveries.push({ id: index + 1, send_id: 10, subscriber_id: delivery.subscriber_id, status: 'pending' }));
       return null;
     }
     if (sql.includes('SET target_count')) return null;
     if (sql.includes("UPDATE newsletters SET status = 'sending'")) return null;
-    if (sql.includes('SELECT id FROM newsletter_deliveries')) return rows.deliveries.filter((delivery) => delivery.status === 'pending').map(({ id }) => ({ id }));
+    if (sql.includes('SELECT COUNT(*) AS target_count')) return { target_count: rows.deliveries.length };
+    if (sql.includes('SELECT queue_claim_key')) return null;
+    if (sql.includes('SELECT id FROM newsletter_deliveries') && !sql.includes('SET queue_claim_key')) return rows.deliveries.filter((delivery) => delivery.status === 'pending' && delivery.queue_claim_key === params[1]).map(({ id }) => ({ id }));
+    if (sql.includes('SET queue_claim_key')) {
+      const claimed = rows.deliveries.filter((delivery) => delivery.status === 'pending' && !delivery.queue_claim_key);
+      claimed.forEach((delivery) => { delivery.queue_claim_key = params[0]; });
+      return claimed.map(({ id }) => ({ id }));
+    }
     if (sql.includes('SET queued_at = datetime')) {
-      const [, ...ids] = params;
-      rows.deliveries.filter((delivery) => ids.includes(delivery.id)).forEach((delivery) => { delivery.queued_at = 'now'; });
+      const [, claim, ...ids] = params;
+      rows.deliveries.filter((delivery) => delivery.queue_claim_key === claim && ids.includes(delivery.id)).forEach((delivery) => { delivery.queued_at = 'now'; });
       return null;
     }
     if (sql.includes("SET status = 'queued'")) return null;
@@ -201,7 +219,7 @@ test('failed-only retry snapshots only subscribers who are still active', async 
     prepare(sql) {
       return { bind: (...params) => ({ sql, params, first: async () => query(sql, params), all: async () => ({ results: query(sql, params) }), run: async () => { query(sql, params); return { meta: { changes: 1 } }; } }) };
     },
-    async batch(items) { items.forEach((item) => query(item.sql, item.params)); return []; },
+    async batch(items) { return items.map((item) => ({ results: [query(item.sql, item.params)].filter(Boolean) })); },
   };
   const queueMessages = [];
   const ctx = {

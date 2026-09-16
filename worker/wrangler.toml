@@ -13,3 +13,8 @@ queue = "ailit-newsletter-send"
 max_batch_size = 1
 max_retries = 3
 dead_letter_queue = "ailit-newsletter-dead-letter"
+
+[[queues.consumers]]
+queue = "ailit-newsletter-dead-letter"
+max_batch_size = 1
+max_retries = 1

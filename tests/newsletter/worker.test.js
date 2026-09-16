@@ -6,7 +6,7 @@ test('newsletter queue worker exposes a queue consumer', () => {
   assert.equal(typeof worker.queue, 'function');
 });
 
-function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }) } = {}) {
+function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false } = {}) {
   const rows = {
     newsletter: {
       id: 8, subject: '안전한 제목', preview_text: '미리보기',
@@ -45,22 +45,22 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
       if (delivery) Object.assign(delivery, { status: 'failed', error_code: code });
       return null;
     }
-    if (sql.includes('SUM(CASE WHEN status')) {
-      const sendId = params[0];
-      const deliveries = rows.deliveries.filter((delivery) => delivery.send_id === sendId);
-      return {
-        target_count: deliveries.length,
-        success_count: deliveries.filter((delivery) => delivery.status === 'sent').length,
-        failure_count: deliveries.filter((delivery) => ['failed', 'bounced', 'complained'].includes(delivery.status)).length,
-        pending_count: deliveries.filter((delivery) => delivery.status === 'pending').length,
-      };
+    if (sql.includes("error_code = 'queue_retries_exhausted'")) {
+      const [sendId, ...ids] = params;
+      rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && ids.includes(delivery.id))
+        .forEach((delivery) => { delivery.status = 'failed'; });
+      return null;
     }
-    if (sql.includes('UPDATE newsletter_sends') && sql.includes('SET target_count = ?')) {
-      Object.assign(rows.send, { target_count: params[0], success_count: params[1], failure_count: params[2], status: params[3] });
+    if (sql.includes('UPDATE newsletter_sends') && sql.includes('SET target_count = (SELECT')) {
+      const deliveries = rows.deliveries.filter((delivery) => delivery.send_id === params[0]);
+      const success = deliveries.filter((delivery) => delivery.status === 'sent').length;
+      const failure = deliveries.filter((delivery) => ['failed', 'bounced', 'complained'].includes(delivery.status)).length;
+      Object.assign(rows.send, { target_count: deliveries.length, success_count: success, failure_count: failure,
+        status: deliveries.some((delivery) => delivery.status === 'pending') ? 'sending' : failure === 0 ? 'completed' : success ? 'partial' : 'failed' });
       return null;
     }
     if (sql.includes('UPDATE newsletters') && sql.includes('SET status = CASE')) {
-      rows.newsletter.status = params[0] === 'failed' ? 'failed' : ['completed', 'partial'].includes(params[0]) ? 'sent' : 'sending';
+      rows.newsletter.status = rows.send.status === 'failed' ? 'failed' : ['completed', 'partial'].includes(rows.send.status) ? 'sent' : 'sending';
       return null;
     }
     throw new Error(`Unsupported worker test query: ${sql}`);
@@ -77,6 +77,10 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
       };
     },
     async batch(statements) {
+      if (failMarkSent && statements.some((statement) => statement.sql.includes("SET status = 'sent'"))) {
+        failMarkSent = false;
+        throw new Error('D1 write failed after provider acceptance');
+      }
       statements.forEach((statement) => run(statement.sql, statement.params));
       return [];
     },
@@ -91,8 +95,10 @@ test('worker sends a bounded batch with individual HTTPS unsubscribe URLs and re
   const { env, rows } = workerEnv();
   const originalFetch = globalThis.fetch;
   let payload;
+  let requestHeaders;
   globalThis.fetch = async (_url, init) => {
     payload = JSON.parse(init.body);
+    requestHeaders = init.headers;
     return env.response;
   };
   try {
@@ -101,7 +107,8 @@ test('worker sends a bounded batch with individual HTTPS unsubscribe URLs and re
     globalThis.fetch = originalFetch;
   }
   assert.equal(payload.length, 2);
-  assert.equal(payload.every((message) => message.tracking.open === false && message.tracking.click === false), true);
+  assert.equal(payload.every((message) => !Object.hasOwn(message, 'tracking')), true);
+  assert.match(requestHeaders['Idempotency-Key'], /^newsletter-3-[a-f0-9]{64}$/);
   assert.match(payload[0].headers['List-Unsubscribe'], /^<https:\/\/site\.test\/api\/newsletter\/unsubscribe\?token=/);
   assert.notEqual(payload[0].headers['List-Unsubscribe'], payload[1].headers['List-Unsubscribe']);
   assert.equal(payload[0].headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');
@@ -111,7 +118,7 @@ test('worker sends a bounded batch with individual HTTPS unsubscribe URLs and re
 });
 
 test('worker records permanent provider failures but throws transient failures for Queue retry', async () => {
-  const permanent = workerEnv({ response: new Response(JSON.stringify({ code: 'invalid_request' }), { status: 422 }) });
+  const permanent = workerEnv({ response: new Response(JSON.stringify({ code: 'validation_error' }), { status: 422 }) });
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => permanent.env.response;
   try {
@@ -150,6 +157,51 @@ test('worker records invalid frozen content as a permanent delivery failure with
   } finally {
     globalThis.fetch = originalFetch;
   }
+  assert.equal(calls, 0);
+  assert.equal(rows.deliveries.every((delivery) => delivery.status === 'failed'), true);
+  assert.equal(rows.send.status, 'failed');
+});
+
+test('redelivery after a post-acceptance D1 failure reuses the exact Resend idempotency key', async () => {
+  const { env, rows } = workerEnv({ failMarkSent: true });
+  const originalFetch = globalThis.fetch;
+  const keys = [];
+  globalThis.fetch = async (_url, init) => {
+    keys.push(init.headers['Idempotency-Key']);
+    return new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 });
+  };
+  try {
+    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, env), /D1 write failed/);
+    await processMessage({ sendId: 3, deliveryIds: [21, 22] }, env);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  assert.deepEqual(keys, [keys[0], keys[0]]);
+  assert.equal(rows.deliveries.every((delivery) => delivery.status === 'sent'), true);
+});
+
+test('concurrent Resend idempotency and missing worker configuration remain retryable', async () => {
+  const concurrent = workerEnv({ response: new Response(JSON.stringify({ code: 'concurrent_idempotent_requests' }), { status: 409 }) });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => concurrent.env.response;
+  try {
+    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, concurrent.env), /Resend batch delivery failed/);
+  } finally { globalThis.fetch = originalFetch; }
+  assert.equal(concurrent.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
+  const missing = workerEnv();
+  delete missing.env.SESSION_SECRET;
+  await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, missing.env), /Missing SESSION_SECRET/);
+  assert.equal(missing.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
+});
+
+test('DLQ reconciliation never calls Resend and finalizes pending deliveries', async () => {
+  const { env, rows } = workerEnv();
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; throw new Error('must not send'); };
+  try {
+    await worker.queue({ queue: 'ailit-newsletter-dead-letter', messages: [{ body: { sendId: 3, deliveryIds: [21, 22] } }] }, env);
+  } finally { globalThis.fetch = originalFetch; }
   assert.equal(calls, 0);
   assert.equal(rows.deliveries.every((delivery) => delivery.status === 'failed'), true);
   assert.equal(rows.send.status, 'failed');
