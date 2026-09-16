@@ -190,9 +190,10 @@ test('subscriber summary returns the current active recipient count for send con
 });
 
 test('admin page keeps member and answer panels while loading the accessible editorial room', async () => {
-  const [html, script] = await Promise.all([
+  const [html, script, sendStatus] = await Promise.all([
     readFile(new URL('../../admin.html', import.meta.url), 'utf8'),
     readFile(new URL('../../js/admin-editorial.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../js/admin-editorial-send-status.js', import.meta.url), 'utf8'),
   ]);
   assert.match(html, /에이릿 편집실/);
   assert.match(html, /회원 목록/);
@@ -216,7 +217,11 @@ test('admin page keeps member and answer panels while loading the accessible edi
   assert.match(script, /newsletter-subscribers\?summary=active/);
   assert.match(script, /\/api\/admin\/newsletters\/.*\/send/);
   assert.match(script, /\/api\/admin\/newsletters\/.*\/retry/);
-  assert.match(script, /retryableFailureCount/);
+  assert.match(script, /sendOutcome/);
+  assert.match(sendStatus, /retryableFailureCount/);
+  assert.match(sendStatus, /indeterminateCount/);
+  assert.match(script, /제공업체 확인/);
+  assert.match(script, /알려진 실패 수신자 재시도/);
   assert.match(script, /Idempotency-Key/);
   assert.match(script, /function loadNewsletters\(offset\)/);
 });
