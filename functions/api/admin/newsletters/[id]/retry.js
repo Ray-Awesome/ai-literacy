@@ -34,9 +34,16 @@ async function createRetrySend(env, sourceId, newsletterIdValue, key) {
       FROM newsletter_sends AS retry JOIN newsletter_deliveries AS delivery
         ON retry.idempotency_key = ?
       JOIN newsletter_subscribers AS subscriber ON subscriber.id = delivery.subscriber_id
-      WHERE delivery.send_id = ? AND delivery.status = 'failed' AND subscriber.status = 'active'
+      WHERE delivery.send_id = ? AND delivery.status = 'failed' AND delivery.delivery_certainty = 'known' AND subscriber.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM newsletter_deliveries AS prior
+          JOIN newsletter_sends AS prior_send ON prior_send.id = prior.send_id
+          WHERE prior_send.newsletter_id = ? AND prior.subscriber_id = delivery.subscriber_id
+            AND prior.send_id <> delivery.send_id
+            AND (prior.status IN ('pending', 'sent') OR prior.delivery_certainty = 'indeterminate')
+        )
       ON CONFLICT(send_id, subscriber_id) DO NOTHING
-    `).bind(key, sourceId),
+    `).bind(key, sourceId, newsletterIdValue),
     env.DB.prepare(`
       UPDATE newsletter_sends
       SET target_count = (SELECT COUNT(*) FROM newsletter_deliveries WHERE send_id = newsletter_sends.id)

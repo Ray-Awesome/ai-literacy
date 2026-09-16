@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS newsletter_deliveries (
   resend_message_id TEXT,
   error_code        TEXT,
   error_message     TEXT,
+  delivery_certainty TEXT   NOT NULL DEFAULT 'known'
+                            CHECK(delivery_certainty IN ('known','indeterminate')),
   queued_at         TEXT,
   queue_claim_key   TEXT,
   queue_claimed_at  TEXT,
@@ -117,6 +119,24 @@ CREATE TABLE IF NOT EXISTS newsletter_deliveries (
 CREATE INDEX IF NOT EXISTS idx_newsletter_deliveries_send_status ON newsletter_deliveries(send_id, status);
 CREATE INDEX IF NOT EXISTS idx_newsletter_deliveries_queue_claim
   ON newsletter_deliveries(send_id, status, queued_at, queue_claim_key);
+
+CREATE TABLE IF NOT EXISTS newsletter_provider_operations (
+  operation_key      TEXT PRIMARY KEY,
+  send_id            INTEGER NOT NULL,
+  queue_claim_key    TEXT,
+  delivery_ids_json  TEXT NOT NULL,
+  request_body       TEXT NOT NULL,
+  provider_key       TEXT NOT NULL,
+  provider_result    TEXT,
+  status             TEXT NOT NULL DEFAULT 'created' CHECK(status IN ('created','accepted')),
+  created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+  accepted_at        TEXT,
+  expires_at         TEXT NOT NULL,
+  FOREIGN KEY (send_id) REFERENCES newsletter_sends(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletter_provider_operations_expiry
+  ON newsletter_provider_operations(expires_at);
 
 CREATE TABLE IF NOT EXISTS newsletter_webhook_events (
   svix_id           TEXT    PRIMARY KEY,

@@ -54,13 +54,61 @@ async function buildMessages(env, config, newsletter, deliveries) {
   }));
 }
 
-async function requestResend(env, messages, key) {
+async function operationKey(message) {
+  return message.queueClaimKey
+    ? `claim:${message.sendId}:${message.queueClaimKey}`
+    : `legacy:${message.sendId}:${await sha256(JSON.stringify(message.deliveryIds))}`;
+}
+
+async function findOperation(env, key) {
+  return env.DB.prepare(`SELECT operation_key, send_id, delivery_ids_json, request_body, provider_key, provider_result, status
+    FROM newsletter_provider_operations WHERE operation_key = ?`).bind(key).first();
+}
+
+async function operationDeliveries(env, sendId, ids) {
+  const result = await env.DB.prepare(`SELECT id, subscriber_id FROM newsletter_deliveries
+    WHERE send_id = ? AND id IN (SELECT value FROM json_each(?)) ORDER BY CASE id ${ids.map((id, index) => `WHEN ${id} THEN ${index}`).join(' ')} END`)
+    .bind(sendId, JSON.stringify(ids)).all();
+  return result.results || [];
+}
+
+async function createOperation(env, operation, message, config, newsletter) {
+  const eligible = await pendingDeliveries(env, message.sendId, message.deliveryIds);
+  if (!eligible.length) return null;
+  const messages = await buildMessages(env, config, newsletter, eligible);
+  const body = JSON.stringify(messages);
+  const ids = eligible.map((delivery) => delivery.id);
+  const providerKey = message.queueClaimKey
+    ? `newsletter-${message.sendId}-claim-${message.queueClaimKey}`
+    : `newsletter-${message.sendId}-${await sha256(JSON.stringify(ids))}`;
+  try {
+    await env.DB.prepare(`INSERT INTO newsletter_provider_operations
+      (operation_key, send_id, queue_claim_key, delivery_ids_json, request_body, provider_key, expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+30 days'))`).bind(operation, message.sendId, message.queueClaimKey || null, JSON.stringify(ids), body, providerKey).run();
+  } catch {
+    // A concurrent queue consumer owns the same durable operation; read it below.
+  }
+  return findOperation(env, operation);
+}
+
+async function cleanupOperations(env) {
+  // Never expire a record that could still be needed to settle an ambiguous
+  // provider acceptance. Completed, fully-recorded deliveries retain their
+  // ordinary audit rows after this bounded payload retention window.
+  await env.DB.prepare(`DELETE FROM newsletter_provider_operations AS operation
+    WHERE expires_at <= datetime('now') AND status = 'accepted'
+      AND NOT EXISTS (SELECT 1 FROM newsletter_deliveries AS delivery
+        WHERE delivery.send_id = operation.send_id
+          AND (delivery.status = 'pending' OR delivery.delivery_certainty = 'indeterminate'))`).bind().run();
+}
+
+async function requestResend(env, requestBody, key, expectedCount) {
   const response = await fetch('https://api.resend.com/emails/batch', { method: 'POST', headers: {
     Authorization: `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json', 'Idempotency-Key': key,
-  }, body: JSON.stringify(messages) });
+  }, body: requestBody });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw Object.assign(new Error('Resend batch delivery failed'), { status: response.status, code: body.name || body.code || 'resend_error' });
-  if (!Array.isArray(body.data) || body.data.length !== messages.length || body.data.some((item) => !item || typeof item.id !== 'string' || !item.id)) throw new Error('Resend returned an invalid batch result');
+  if (!Array.isArray(body.data) || body.data.length !== expectedCount || body.data.some((item) => !item || typeof item.id !== 'string' || !item.id)) throw new Error('Resend returned an invalid batch result');
   return body.data;
 }
 
@@ -91,25 +139,44 @@ export async function recomputeSend(env, sendId) {
 export async function processMessage(body, env) {
   const message = validMessage(body);
   if (!message) throw new Error('Invalid newsletter queue message');
-  const config = workerConfig(env);
-  const newsletter = await frozenNewsletter(env, message.sendId);
-  if (!newsletter) throw new Error('Newsletter send was not found');
-  const deliveries = await pendingDeliveries(env, message.sendId, message.deliveryIds);
-  if (!deliveries.length) { await recomputeSend(env, message.sendId); return; }
-  let messages;
-  try { messages = await buildMessages(env, config, newsletter, deliveries); } catch (error) {
-    if (!error?.permanentContent) throw error;
-    await markResult(env, message.sendId, deliveries, { code: 'invalid_frozen_content', message: 'Frozen newsletter content is invalid' }, true);
-    await recomputeSend(env, message.sendId); return;
+  await cleanupOperations(env);
+  const key = await operationKey(message);
+  let operation = await findOperation(env, key);
+  if (!operation) {
+    // Configuration and subscription status are used exactly once, before a
+    // durable provider operation exists. Redelivery must not depend on either.
+    const config = workerConfig(env);
+    const newsletter = await frozenNewsletter(env, message.sendId);
+    if (!newsletter) throw new Error('Newsletter send was not found');
+    try { operation = await createOperation(env, key, message, config, newsletter); } catch (error) {
+      if (!error?.permanentContent) throw error;
+      const deliveries = await pendingDeliveries(env, message.sendId, message.deliveryIds);
+      await markResult(env, message.sendId, deliveries, { code: 'invalid_frozen_content', message: 'Frozen newsletter content is invalid' }, true);
+      await recomputeSend(env, message.sendId);
+      return;
+    }
   }
-  const key = message.queueClaimKey
-    ? `newsletter-${message.sendId}-claim-${message.queueClaimKey}`
-    : `newsletter-${message.sendId}-${await sha256(JSON.stringify(message.deliveryIds))}`;
+  if (!operation) { await recomputeSend(env, message.sendId); return; }
+  let messages;
+  let deliveries;
+  try {
+    messages = JSON.parse(operation.request_body);
+    const ids = JSON.parse(operation.delivery_ids_json);
+    if (!Array.isArray(messages) || !Array.isArray(ids) || !messages.length || messages.length !== ids.length || messages.length > MAX_BATCH_SIZE) throw new Error('Invalid provider operation');
+    deliveries = await operationDeliveries(env, message.sendId, ids);
+    if (deliveries.length !== ids.length) throw new Error('Provider operation deliveries are unavailable');
+  } catch { throw new Error('Invalid provider operation'); }
   let result;
-  try { result = await requestResend(env, messages, key); } catch (error) {
+  try {
+    result = operation.status === 'accepted' && operation.provider_result ? JSON.parse(operation.provider_result) : await requestResend(env, operation.request_body, operation.provider_key, messages.length);
+  } catch (error) {
     if (!([400, 422].includes(error?.status) && PERMANENT_RESEND_CODES.has(error.code))) throw error;
     await markResult(env, message.sendId, deliveries, { code: error.code, message: 'Email provider rejected this delivery' }, true);
     await recomputeSend(env, message.sendId); return;
+  }
+  if (operation.status !== 'accepted') {
+    await env.DB.prepare(`UPDATE newsletter_provider_operations SET status = 'accepted', provider_result = ?, accepted_at = datetime('now') WHERE operation_key = ?`)
+      .bind(JSON.stringify(result), operation.operation_key).run();
   }
   await markResult(env, message.sendId, deliveries, result, false);
   await recomputeSend(env, message.sendId);
@@ -118,9 +185,11 @@ export async function processMessage(body, env) {
 export async function reconcileDlq(body, env) {
   const message = validMessage(body);
   if (!message) return;
-  const ids = JSON.stringify(message.deliveryIds);
+  const operation = await findOperation(env, await operationKey(message));
+  const ids = JSON.stringify(operation ? JSON.parse(operation.delivery_ids_json) : message.deliveryIds);
   await env.DB.prepare(`UPDATE newsletter_deliveries SET status = 'failed', error_code = 'queue_retries_exhausted', error_message = 'Queue retries were exhausted', updated_at = datetime('now')
-    WHERE send_id = ? AND status = 'pending' AND id IN (SELECT value FROM json_each(?))`).bind(message.sendId, ids).run();
+    , delivery_certainty = ? WHERE send_id = ? AND status = 'pending' AND id IN (SELECT value FROM json_each(?))`)
+    .bind(operation ? 'indeterminate' : 'known', message.sendId, ids).run();
   await recomputeSend(env, message.sendId);
 }
 

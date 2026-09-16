@@ -6,7 +6,7 @@ test('newsletter queue worker exposes a queue consumer', () => {
   assert.equal(typeof worker.queue, 'function');
 });
 
-function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false } = {}) {
+function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false, failOperationResult = false } = {}) {
   const rows = {
     newsletter: {
       id: 8, subject: '안전한 제목', preview_text: '미리보기',
@@ -18,8 +18,28 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
       { id: 21, send_id: 3, subscriber_id: 11, status: 'pending' },
       { id: 22, send_id: 3, subscriber_id: 12, status: 'pending' },
     ],
+    operations: [],
   };
   function run(sql, params) {
+    if (sql.includes('DELETE FROM newsletter_provider_operations')) return null;
+    if (sql.includes('SELECT operation_key, send_id, delivery_ids_json')) return rows.operations.find((operation) => operation.operation_key === params[0]) || null;
+    if (sql.includes('INSERT INTO newsletter_provider_operations')) {
+      const [operation_key, send_id, queue_claim_key, delivery_ids_json, request_body, provider_key] = params;
+      if (rows.operations.some((operation) => operation.operation_key === operation_key)) throw new Error('unique');
+      rows.operations.push({ operation_key, send_id, queue_claim_key, delivery_ids_json, request_body, provider_key, status: 'created', provider_result: null });
+      return null;
+    }
+    if (sql.includes('SELECT id, subscriber_id FROM newsletter_deliveries')) {
+      const [sendId, idsJson] = params;
+      const ids = JSON.parse(idsJson);
+      return ids.map((id) => rows.deliveries.find((delivery) => delivery.send_id === sendId && delivery.id === id)).filter(Boolean);
+    }
+    if (sql.includes("UPDATE newsletter_provider_operations SET status = 'accepted'")) {
+      if (failOperationResult) { failOperationResult = false; throw new Error('D1 operation result write failed'); }
+      const operation = rows.operations.find((item) => item.operation_key === params[1]);
+      if (operation) Object.assign(operation, { status: 'accepted', provider_result: params[0] });
+      return null;
+    }
     if (sql.includes('SELECT send.id AS send_id')) return { ...rows.newsletter, send_id: 3, newsletter_id: 8 };
     if (sql.includes("SET status = 'failed', error_code = 'inactive_subscriber'")) {
       const [sendId, idsJson] = params;
@@ -48,10 +68,10 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
       return null;
     }
     if (sql.includes("error_code = 'queue_retries_exhausted'")) {
-      const [sendId, idsJson] = params;
+      const [certainty, sendId, idsJson] = params;
       const ids = JSON.parse(idsJson);
       rows.deliveries.filter((delivery) => delivery.send_id === sendId && delivery.status === 'pending' && ids.includes(delivery.id))
-        .forEach((delivery) => { delivery.status = 'failed'; });
+        .forEach((delivery) => { delivery.status = 'failed'; delivery.delivery_certainty = certainty; });
       return null;
     }
     if (sql.includes('UPDATE newsletter_sends') && sql.includes('SET target_count = (SELECT')) {
@@ -165,24 +185,31 @@ test('worker records invalid frozen content as a permanent delivery failure with
   assert.equal(rows.send.status, 'failed');
 });
 
-test('redelivery after a post-acceptance D1 failure reuses the exact Resend idempotency key', async () => {
-  const { env, rows } = workerEnv({ failMarkSent: true });
+test('redelivery after a post-acceptance D1 failure reuses the frozen provider request', async () => {
+  const { env, rows } = workerEnv({ failOperationResult: true });
   const originalFetch = globalThis.fetch;
   const keys = [];
+  const bodyByKey = new Map();
   globalThis.fetch = async (_url, init) => {
     keys.push(init.headers['Idempotency-Key']);
+    if (bodyByKey.has(init.headers['Idempotency-Key']) && bodyByKey.get(init.headers['Idempotency-Key']) !== init.body) {
+      return new Response(JSON.stringify({ code: 'idempotency_key_payload_mismatch' }), { status: 409 });
+    }
+    bodyByKey.set(init.headers['Idempotency-Key'], init.body);
     return new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 });
   };
   try {
-    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, env), /D1 write failed/);
+    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, env), /operation result write failed/);
     env.SESSION_SECRET = 'rotated-secret-at-least-32-characters';
     env.PUBLIC_SITE_URL = 'https://rotated.example.test';
     env.NEWSLETTER_FROM = 'AILIT <rotated@site.test>';
+    rows.subscribers[0].status = 'unsubscribed';
     await processMessage({ sendId: 3, deliveryIds: [21, 22] }, env);
   } finally {
     globalThis.fetch = originalFetch;
   }
   assert.deepEqual(keys, [keys[0], keys[0]]);
+  assert.equal(bodyByKey.size, 1);
   assert.equal(rows.deliveries.every((delivery) => delivery.status === 'sent'), true);
 });
 
@@ -206,15 +233,20 @@ test('concurrent Resend idempotency and missing worker configuration remain retr
   assert.equal(missing.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
 });
 
-test('DLQ reconciliation never calls Resend and finalizes pending deliveries', async () => {
+test('DLQ reconciliation marks an existing provider operation indeterminate without calling Resend', async () => {
   const { env, rows } = workerEnv();
+  rows.operations.push({ operation_key: 'legacy:3:pending', send_id: 3, delivery_ids_json: '[21,22]', request_body: '[]', provider_key: 'key', provider_result: null, status: 'created' });
+  // Use a claim key so the operation lookup is the same durable identity as
+  // the queue message.
+  rows.operations[0].operation_key = 'claim:3:11111111-1111-4111-8111-111111111111';
   const originalFetch = globalThis.fetch;
   let calls = 0;
   globalThis.fetch = async () => { calls += 1; throw new Error('must not send'); };
   try {
-    await worker.queue({ queue: 'ailit-newsletter-dead-letter', messages: [{ body: { sendId: 3, deliveryIds: [21, 22] } }] }, env);
+    await worker.queue({ queue: 'ailit-newsletter-dead-letter', messages: [{ body: { sendId: 3, deliveryIds: [21, 22], queueClaimKey: '11111111-1111-4111-8111-111111111111' } }] }, env);
   } finally { globalThis.fetch = originalFetch; }
   assert.equal(calls, 0);
   assert.equal(rows.deliveries.every((delivery) => delivery.status === 'failed'), true);
+  assert.equal(rows.deliveries.every((delivery) => delivery.delivery_certainty === 'indeterminate'), true);
   assert.equal(rows.send.status, 'failed');
 });

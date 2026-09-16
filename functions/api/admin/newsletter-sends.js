@@ -25,6 +25,7 @@ function publicDelivery(row) {
     status: row.status,
     errorCode: row.error_code,
     errorMessage: row.error_message,
+    certainty: row.delivery_certainty,
     sentAt: row.sent_at,
     updatedAt: row.updated_at,
   };
@@ -47,7 +48,7 @@ export async function onRequestGet({ request, env }) {
   try {
     if (sendId) {
       const rows = await env.DB.prepare(`
-        SELECT d.id, d.send_id, d.subscriber_id, sub.email, d.status, d.error_code, d.error_message, d.sent_at, d.updated_at
+        SELECT d.id, d.send_id, d.subscriber_id, sub.email, d.status, d.error_code, d.error_message, d.delivery_certainty, d.sent_at, d.updated_at
         FROM newsletter_deliveries d JOIN newsletter_subscribers sub ON sub.id = d.subscriber_id
         WHERE d.send_id = ?
         ORDER BY d.id DESC LIMIT ? OFFSET ?
