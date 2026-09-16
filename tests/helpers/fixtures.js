@@ -14,7 +14,7 @@ export function jsonRequest(path, body, options = {}) {
 }
 
 export function makeEnv() {
-  const rows = { subscribers: [] };
+  const rows = { subscribers: [], challenges: [] };
   const db = new FakeD1(rows);
   const env = {
     DB: db,
@@ -25,6 +25,11 @@ export function makeEnv() {
     rows,
     sentEmails: [],
     rateLimits: db.rateLimits,
+    scheduled: [],
+  };
+  env.waitUntil = (work) => env.scheduled.push(Promise.resolve(work));
+  env.drainScheduled = async () => {
+    while (env.scheduled.length) await Promise.allSettled(env.scheduled.splice(0));
   };
   env.seedPending = async (email, expiration = '2999-01-01 00:00:00') => {
     const token = await newConfirmationToken();
@@ -32,12 +37,21 @@ export function makeEnv() {
       id: db.nextSubscriberId++, email, status: 'pending', consent_at: '2026-09-16 00:00:00',
       confirmation_token_hash: token.hash, confirmation_expires_at: expiration,
     });
+    rows.challenges.push({ subscriber_id: db.nextSubscriberId - 1, token_hash: token.hash, expires_at: expiration });
     return token.raw;
   };
   env.seedSubscriber = (email, status = 'active') => {
     const subscriber = { id: db.nextSubscriberId++, email, status, consent_at: '2026-09-16 00:00:00' };
     rows.subscribers.push(subscriber);
     return subscriber;
+  };
+  env.seedLegacyPending = async (email) => {
+    const token = await newConfirmationToken();
+    rows.subscribers.push({
+      id: db.nextSubscriberId++, email, status: 'pending', consent_at: '2026-09-16 00:00:00',
+      confirmation_token_hash: token.hash, confirmation_expires_at: '2999-01-01 00:00:00',
+    });
+    return token.raw;
   };
   env.unsubscribeToken = (subscriber) => signActionToken({
     sid: subscriber.id, purpose: 'unsubscribe', exp: Math.floor(Date.now() / 1000) + 3600,

@@ -31,6 +31,10 @@ export async function onRequestGet({ request, env }) {
 }
 
 export async function onRequestPost({ request, env }) {
+  const contentType = (request.headers.get('Content-Type') || '').split(';', 1)[0].trim().toLowerCase();
+  if (contentType !== 'application/x-www-form-urlencoded' || await request.text() !== 'List-Unsubscribe=One-Click') {
+    return json({ error: 'Invalid one-click unsubscribe request.' }, 400);
+  }
   await unsubscribe(request, env);
   return json({ ok: true });
 }

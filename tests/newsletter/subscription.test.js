@@ -24,27 +24,44 @@ function confirmationTokenFrom(env) {
   return new URL(env.sentEmails.at(-1).html.match(/https?:[^"']+/)[0]).searchParams.get('token');
 }
 
+function publicContext(env, request) {
+  return { request, env, waitUntil: env.waitUntil };
+}
+
+async function subscribeAndDrain(env, body, options) {
+  const response = await subscribe(publicContext(env, jsonRequest('/api/newsletter/subscribe', body, options)));
+  await env.drainScheduled();
+  return response;
+}
+
+async function resendAndDrain(env, body, options) {
+  const response = await resendConfirmation(publicContext(env, jsonRequest('/api/newsletter/resend-confirmation', body, options)));
+  await env.drainScheduled();
+  return response;
+}
+
 test('subscribe requires explicit consent and stores a normalized pending email with only a token hash', async (context) => {
   const { env } = context;
-  const denied = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'a@example.com', consent: false }), env });
+  const denied = await subscribeAndDrain(env, { email: 'a@example.com', consent: false });
   assert.equal(denied.status, 400);
 
-  const accepted = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: ' A@Example.com ', consent: true }), env });
+  const accepted = await subscribeAndDrain(env, { email: ' A@Example.com ', consent: true });
   assert.equal(accepted.status, 202);
   assert.equal(env.rows.subscribers[0].email, 'a@example.com');
   assert.equal(env.rows.subscribers[0].status, 'pending');
   assert.equal('raw_confirmation_token' in env.rows.subscribers[0], false);
-  assert.notEqual(env.rows.subscribers[0].confirmation_token_hash, confirmationTokenFrom(env));
+  assert.equal('raw_confirmation_token' in env.rows.challenges[0], false);
+  assert.notEqual(env.rows.challenges[0].token_hash, confirmationTokenFrom(env));
 });
 
 test('subscribe rejects malformed email addresses', async (context) => {
-  const response = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'not-an-email', consent: true }), env: context.env });
+  const response = await subscribeAndDrain(context.env, { email: 'not-an-email', consent: true });
   assert.equal(response.status, 400);
   assert.equal(context.env.rows.subscribers.length, 0);
 });
 
 test('honeypot submissions are accepted without retaining data or sending mail', async (context) => {
-  const response = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'bot@example.com', consent: true, company: 'spam' }), env: context.env });
+  const response = await subscribeAndDrain(context.env, { email: 'bot@example.com', consent: true, company: 'spam' });
   assert.equal(response.status, 202);
   assert.deepEqual(await response.json(), { message: GENERIC_RESPONSE });
   assert.equal(context.env.rows.subscribers.length, 0);
@@ -53,10 +70,10 @@ test('honeypot submissions are accepted without retaining data or sending mail',
 
 test('new, pending, and active addresses receive the same enumeration-safe response', async (context) => {
   const { env } = context;
-  const first = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'reader@example.com', consent: true }), env });
-  const pending = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'reader@example.com', consent: true }), env });
+  const first = await subscribeAndDrain(env, { email: 'reader@example.com', consent: true });
+  const pending = await subscribeAndDrain(env, { email: 'reader@example.com', consent: true });
   env.rows.subscribers[0].status = 'active';
-  const active = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'reader@example.com', consent: true }), env });
+  const active = await subscribeAndDrain(env, { email: 'reader@example.com', consent: true });
   assert.deepEqual(await first.json(), { message: GENERIC_RESPONSE });
   assert.deepEqual(await pending.json(), { message: GENERIC_RESPONSE });
   assert.deepEqual(await active.json(), { message: GENERIC_RESPONSE });
@@ -65,7 +82,7 @@ test('new, pending, and active addresses receive the same enumeration-safe respo
 
 test('rate-limit records contain no raw email address or IP address', async (context) => {
   const { env } = context;
-  await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: 'privacy@example.com', consent: true }, { ip: '203.0.113.8' }), env });
+  await subscribeAndDrain(env, { email: 'privacy@example.com', consent: true }, { ip: '203.0.113.8' });
   const stored = JSON.stringify([...env.rateLimits.entries()]);
   assert.equal(stored.includes('privacy@example.com'), false);
   assert.equal(stored.includes('203.0.113.8'), false);
@@ -90,17 +107,24 @@ test('expired confirmation tokens are rejected', async (context) => {
   assert.equal(context.env.rows.subscribers[0].status, 'pending');
 });
 
-test('resending a pending confirmation invalidates the preceding token', async (context) => {
+test('a pending confirmation from the prior single-hash format remains usable', async (context) => {
+  const raw = await context.env.seedLegacyPending('reader@example.com');
+  const response = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${raw}`), env: context.env });
+  assert.match(response.headers.get('Location'), /state=confirmed/);
+  assert.equal(context.env.rows.subscribers[0].status, 'active');
+});
+
+test('resending a pending confirmation issues a fresh usable challenge', async (context) => {
   const { env } = context;
   const oldToken = await env.seedPending('a@example.com');
-  const response = await resendConfirmation({ request: jsonRequest('/api/newsletter/resend-confirmation', { email: 'a@example.com' }), env });
+  const response = await resendAndDrain(env, { email: 'a@example.com' });
   const newToken = confirmationTokenFrom(env);
   assert.equal(response.status, 202);
   assert.notEqual(newToken, oldToken);
-  const oldConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${oldToken}`), env });
-  assert.match(oldConfirmation.headers.get('Location'), /state=invalid/);
   const newConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${newToken}`), env });
   assert.match(newConfirmation.headers.get('Location'), /state=confirmed/);
+  const oldConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${oldToken}`), env });
+  assert.match(oldConfirmation.headers.get('Location'), /state=invalid/);
 });
 
 test('unsubscribe GET is idempotent and does not expose the email in the redirect', async (context) => {
@@ -132,12 +156,23 @@ test('unsubscribe accepts RFC 8058 one-click POST requests', async (context) => 
 test('an unsubscribed address must complete a new confirmation before reactivation', async (context) => {
   const { env } = context;
   const subscriber = env.seedSubscriber('reader@example.com', 'unsubscribed');
-  const response = await subscribe({ request: jsonRequest('/api/newsletter/subscribe', { email: subscriber.email, consent: true }), env });
+  const response = await subscribeAndDrain(env, { email: subscriber.email, consent: true });
   assert.equal(response.status, 202);
   assert.equal(subscriber.status, 'pending');
   const confirmResponse = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${confirmationTokenFrom(env)}`), env });
   assert.match(confirmResponse.headers.get('Location'), /state=confirmed/);
   assert.equal(subscriber.status, 'active');
+});
+
+test('re-subscribing cannot reactivate an old challenge from before unsubscribe', async (context) => {
+  const { env } = context;
+  const oldToken = await env.seedPending('reader@example.com');
+  env.rows.subscribers[0].status = 'unsubscribed';
+  await subscribeAndDrain(env, { email: 'reader@example.com', consent: true });
+  const oldConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${oldToken}`), env });
+  assert.match(oldConfirmation.headers.get('Location'), /state=invalid/);
+  const freshConfirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${confirmationTokenFrom(env)}`), env });
+  assert.match(freshConfirmation.headers.get('Location'), /state=confirmed/);
 });
 
 test('Resend client sets its idempotency header and returns a typed error without leaking response details', async (context) => {
@@ -151,4 +186,62 @@ test('Resend client sets its idempotency header and returns a typed error withou
   assert.equal(captured.headers['X-Entity-Ref-ID'], 'operation-1');
   globalThis.fetch = async () => new Response(JSON.stringify({ name: 'validation_error', message: 'Invalid recipient' }), { status: 422 });
   await assert.rejects(() => sendEmail(env, { to: 'reader@example.com', subject: 'Subject', html: '<p>Hello</p>', text: 'Hello', idempotencyKey: 'operation-2' }), (error) => error instanceof ResendError && error.status === 422 && error.code === 'validation_error');
+});
+
+test('resending confirmation does not rewrite the original consent timestamp', async (context) => {
+  const { env } = context;
+  await env.seedPending('reader@example.com');
+  env.rows.subscribers[0].consent_at = '2024-01-01 00:00:00';
+  await resendAndDrain(env, { email: 'reader@example.com' });
+  assert.equal(env.rows.subscribers[0].consent_at, '2024-01-01 00:00:00');
+});
+
+test('provider failure leaves an earlier delivered confirmation token usable', async (context) => {
+  const { env } = context;
+  const oldToken = await env.seedPending('reader@example.com');
+  globalThis.fetch = async () => new Response('unavailable', { status: 503 });
+  const response = await resendAndDrain(env, { email: 'reader@example.com' });
+  assert.equal(response.status, 202);
+  const confirmation = await confirm({ request: new Request(`https://site.test/api/newsletter/confirm?token=${oldToken}`), env });
+  assert.match(confirmation.headers.get('Location'), /state=confirmed/);
+});
+
+test('JSON null and arrays receive safe public responses', async (context) => {
+  const { env } = context;
+  const nullRequest = new Request('https://site.test/api/newsletter/subscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: 'null' });
+  const arrayRequest = new Request('https://site.test/api/newsletter/resend-confirmation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '[]' });
+  const subscribeResponse = await subscribe(publicContext(env, nullRequest));
+  const resendResponse = await resendConfirmation(publicContext(env, arrayRequest));
+  assert.equal(subscribeResponse.status, 400);
+  assert.equal(resendResponse.status, 202);
+});
+
+test('one-click unsubscribe rejects invalid RFC 8058 request bodies before mutation', async (context) => {
+  const { env } = context;
+  const subscriber = env.seedSubscriber('reader@example.com');
+  const token = await env.unsubscribeToken(subscriber);
+  const url = `https://site.test/api/newsletter/unsubscribe?token=${token}`;
+  const wrongType = new Request(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: 'List-Unsubscribe=One-Click' });
+  const wrongValue = new Request(url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=Nope' });
+  assert.equal((await unsubscribeOneClick({ request: wrongType, env })).status, 400);
+  assert.equal((await unsubscribeOneClick({ request: wrongValue, env })).status, 400);
+  assert.equal(subscriber.status, 'active');
+});
+
+test('a concurrent activation cannot schedule a confirmation challenge that D1 did not store', async (context) => {
+  const { env } = context;
+  const subscriber = env.seedSubscriber('reader@example.com', 'pending');
+  env.DB.onFirst = () => { subscriber.status = 'active'; };
+  const response = await subscribeAndDrain(env, { email: subscriber.email, consent: true });
+  assert.equal(response.status, 202);
+  assert.equal(env.sentEmails.length, 0);
+});
+
+test('subscription schedules mail outside the public response and scheduled work can be drained', async (context) => {
+  const { env } = context;
+  const response = await subscribe(publicContext(env, jsonRequest('/api/newsletter/subscribe', { email: 'reader@example.com', consent: true })));
+  assert.equal(response.status, 202);
+  assert.equal(env.scheduled.length, 1);
+  await env.drainScheduled();
+  assert.equal(env.sentEmails.length, 1);
 });

@@ -44,6 +44,17 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
 
 CREATE INDEX IF NOT EXISTS idx_newsletter_subscribers_status ON newsletter_subscribers(status);
 
+CREATE TABLE IF NOT EXISTS newsletter_confirmation_challenges (
+  token_hash    TEXT    PRIMARY KEY,
+  subscriber_id INTEGER NOT NULL,
+  expires_at    TEXT    NOT NULL,
+  created_at    TEXT    NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (subscriber_id) REFERENCES newsletter_subscribers(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletter_confirmation_challenges_subscriber
+  ON newsletter_confirmation_challenges(subscriber_id);
+
 CREATE TABLE IF NOT EXISTS newsletters (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   subject         TEXT    NOT NULL,

@@ -17,7 +17,23 @@ export class FakeD1 {
   async first(sql, params) {
     if (/SELECT id, status FROM newsletter_subscribers WHERE email = \?/.test(sql)) {
       const row = this.rows.subscribers.find((subscriber) => subscriber.email === params[0]);
-      return row ? { id: row.id, status: row.status } : null;
+      const result = row ? { id: row.id, status: row.status } : null;
+      await this.onFirst?.(sql, params, result);
+      return result;
+    }
+    if (sql.includes('SELECT subscriber_id FROM newsletter_confirmation_challenges')) {
+      const challenge = this.rows.challenges.find((item) => (
+        item.token_hash === params[0] && item.expires_at > '2026-09-16 00:00:00'
+      ));
+      return challenge ? { subscriber_id: challenge.subscriber_id } : null;
+    }
+    if (sql.includes('SELECT id FROM newsletter_subscribers WHERE status = \'pending\'')) {
+      const row = this.rows.subscribers.find((subscriber) => (
+        subscriber.status === 'pending'
+        && subscriber.confirmation_token_hash === params[0]
+        && subscriber.confirmation_expires_at > '2026-09-16 00:00:00'
+      ));
+      return row ? { id: row.id } : null;
     }
     throw new Error(`Unsupported first query: ${sql}`);
   }
@@ -36,28 +52,45 @@ export class FakeD1 {
           confirmation_token_hash: confirmationTokenHash,
           confirmation_expires_at: '2999-01-01 00:00:00',
         });
+        return { meta: { changes: 1 } };
       }
+      return { meta: { changes: 0 } };
+    }
+
+    if (sql.includes('INSERT INTO newsletter_confirmation_challenges')) {
+      const [tokenHash, email] = params;
+      const subscriber = this.rows.subscribers.find((row) => row.email === email && row.status === 'pending');
+      if (!subscriber || this.rows.challenges.some((challenge) => challenge.token_hash === tokenHash)) return { meta: { changes: 0 } };
+      this.rows.challenges.push({ subscriber_id: subscriber.id, token_hash: tokenHash, expires_at: '2999-01-01 00:00:00' });
       return { meta: { changes: 1 } };
     }
 
     if (sql.includes("SET status = 'pending'")) {
-      const [confirmationTokenHash, email] = params;
-      const row = this.rows.subscribers.find((subscriber) => subscriber.email === email && subscriber.status !== 'active');
+      const [first, second] = params;
+      const byId = sql.includes('WHERE id = ?');
+      const row = byId
+        ? this.rows.subscribers.find((subscriber) => subscriber.id === first && subscriber.status !== 'active')
+        : this.rows.subscribers.find((subscriber) => subscriber.email === second && subscriber.status !== 'active');
       if (!row) return { meta: { changes: 0 } };
       row.status = 'pending';
       row.consent_at = '2026-09-16 00:00:00';
       row.confirmed_at = null;
-      row.confirmation_token_hash = confirmationTokenHash;
-      row.confirmation_expires_at = '2999-01-01 00:00:00';
+      if (!byId) {
+        row.confirmation_token_hash = first;
+        row.confirmation_expires_at = '2999-01-01 00:00:00';
+      }
+      if (sql.includes('confirmation_token_hash = NULL')) {
+        row.confirmation_token_hash = null;
+        row.confirmation_expires_at = null;
+      }
       return { meta: { changes: 1 } };
     }
 
     if (sql.includes("SET status = 'active'")) {
-      const [confirmationTokenHash] = params;
+      const [subscriberId] = params;
       const row = this.rows.subscribers.find((subscriber) => (
         subscriber.status === 'pending'
-        && subscriber.confirmation_token_hash === confirmationTokenHash
-        && subscriber.confirmation_expires_at > '2026-09-16 00:00:00'
+        && subscriber.id === subscriberId
       ));
       if (!row) return { meta: { changes: 0 } };
       row.status = 'active';
@@ -65,6 +98,13 @@ export class FakeD1 {
       row.confirmation_token_hash = null;
       row.confirmation_expires_at = null;
       return { meta: { changes: 1 } };
+    }
+
+    if (sql.includes('DELETE FROM newsletter_confirmation_challenges')) {
+      const [subscriberId] = params;
+      const before = this.rows.challenges.length;
+      this.rows.challenges = this.rows.challenges.filter((challenge) => challenge.subscriber_id !== subscriberId);
+      return { meta: { changes: before - this.rows.challenges.length } };
     }
 
     if (sql.includes("SET status = 'unsubscribed'")) {

@@ -6,6 +6,10 @@ import { newConfirmationToken, sha256 } from '../../../lib/newsletter/tokens.js'
 
 const GENERIC_MESSAGE = '확인할 수 있는 경우 구독 안내 메일을 보냈습니다.';
 
+function objectBody(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 function confirmationMessage(config, email, token, id) {
   const url = `${config.publicSiteUrl}/api/newsletter/confirm?token=${encodeURIComponent(token.raw)}`;
   return {
@@ -16,8 +20,8 @@ function confirmationMessage(config, email, token, id) {
   };
 }
 
-export async function onRequestPost({ request, env }) {
-  const body = await request.json().catch(() => ({}));
+export async function onRequestPost({ request, env, waitUntil }) {
+  const body = objectBody(await request.json().catch(() => ({})));
   const email = String(body.email || '').trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return json({ message: GENERIC_MESSAGE }, 202);
 
@@ -33,13 +37,16 @@ export async function onRequestPost({ request, env }) {
     const subscriber = await env.DB.prepare('SELECT id, status FROM newsletter_subscribers WHERE email = ?').bind(email).first();
     if (!subscriber || subscriber.status !== 'pending') return json({ message: GENERIC_MESSAGE }, 202);
     const token = await newConfirmationToken();
-    const updated = await env.DB.prepare(`
-      UPDATE newsletter_subscribers
-      SET status = 'pending', consent_at = datetime('now'), confirmed_at = NULL,
-          confirmation_token_hash = ?, confirmation_expires_at = datetime('now', '+24 hours'), updated_at = datetime('now')
-      WHERE email = ? AND status <> 'active'
+    const challenge = await env.DB.prepare(`
+      INSERT INTO newsletter_confirmation_challenges (token_hash, subscriber_id, expires_at)
+      SELECT ?, id, datetime('now', '+24 hours')
+      FROM newsletter_subscribers
+      WHERE email = ? AND status = 'pending'
     `).bind(token.hash, email).run();
-    if (updated.meta?.changes === 1) await sendEmail(env, confirmationMessage(newsletterConfig(env), email, token, subscriber.id));
+    if (challenge.meta?.changes === 1) {
+      const work = sendEmail(env, confirmationMessage(newsletterConfig(env), email, token, subscriber.id)).catch(() => undefined);
+      if (typeof waitUntil === 'function') waitUntil(work);
+    }
   } catch {
     // Enumeration-safe endpoint: do not reveal storage or mail delivery errors.
   }
