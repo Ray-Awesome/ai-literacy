@@ -26,8 +26,20 @@ async function createRetrySend(env, sourceId, newsletterIdValue, key) {
       INSERT INTO newsletter_sends (newsletter_id, idempotency_key, status, started_at, source_send_id)
       SELECT ?, ?, 'queued', datetime('now'), ?
       WHERE EXISTS (SELECT 1 FROM newsletter_sends WHERE id = ? AND newsletter_id = ? AND status IN ('partial', 'failed'))
+        AND EXISTS (
+          SELECT 1 FROM newsletter_deliveries AS delivery
+          JOIN newsletter_subscribers AS subscriber ON subscriber.id = delivery.subscriber_id
+          WHERE delivery.send_id = ? AND delivery.status = 'failed' AND delivery.delivery_certainty = 'known' AND subscriber.status = 'active'
+            AND NOT EXISTS (
+              SELECT 1 FROM newsletter_deliveries AS prior
+              JOIN newsletter_sends AS prior_send ON prior_send.id = prior.send_id
+              WHERE prior_send.newsletter_id = ? AND prior.subscriber_id = delivery.subscriber_id
+                AND prior.send_id <> delivery.send_id
+                AND (prior.status IN ('pending', 'sent') OR prior.delivery_certainty = 'indeterminate')
+            )
+        )
       RETURNING id, newsletter_id, status
-    `).bind(newsletterIdValue, key, sourceId, sourceId, newsletterIdValue),
+    `).bind(newsletterIdValue, key, sourceId, sourceId, newsletterIdValue, sourceId, newsletterIdValue),
     env.DB.prepare(`
       INSERT INTO newsletter_deliveries (send_id, subscriber_id, status)
       SELECT retry.id, delivery.subscriber_id, 'pending'
@@ -51,8 +63,8 @@ async function createRetrySend(env, sourceId, newsletterIdValue, key) {
     `).bind(key),
     env.DB.prepare(`
       UPDATE newsletters SET status = 'sending', updated_at = datetime('now')
-      WHERE id = ? AND status <> 'draft'
-    `).bind(newsletterIdValue),
+      WHERE id = ? AND status <> 'draft' AND EXISTS (SELECT 1 FROM newsletter_sends WHERE idempotency_key = ?)
+    `).bind(newsletterIdValue, key),
   ]);
   return result?.[0]?.results?.[0] || null;
 }
@@ -84,17 +96,9 @@ export async function onRequestPost({ request, env, params }) {
         send = await env.DB.prepare(`SELECT id, newsletter_id, status, source_send_id FROM newsletter_sends WHERE idempotency_key = ?`).bind(key).first();
       }
     }
-    if (!send) return json({ error: '재시도 발송을 만들지 못했습니다.' }, 409);
+    if (!send) return json({ error: '현재 재시도할 수 있는 실패 수신자가 없습니다.' }, 409);
     const queued = await queueExistingSend(env, send.id);
     if (queued.error) return json({ error: '재시도 대기열 등록에 실패했습니다. 같은 키로 다시 시도하세요.' }, 503);
-    if (queued.targetCount === 0) {
-      await env.DB.batch([
-        env.DB.prepare(`UPDATE newsletter_sends SET status = 'completed', completed_at = datetime('now'), target_count = 0, success_count = 0, failure_count = 0 WHERE id = ?`).bind(send.id),
-        env.DB.prepare(`UPDATE newsletters SET status = 'sent', sent_at = COALESCE(sent_at, datetime('now')), updated_at = datetime('now')
-          WHERE id = ? AND NOT EXISTS (SELECT 1 FROM newsletter_sends AS newer WHERE newer.newsletter_id = newsletters.id AND newer.id > ?)`)
-          .bind(newsletterIdValue, send.id),
-      ]);
-    }
     return json({ sendId: send.id, queued: queued.queued }, 202);
   } catch {
     return json({ error: '실패한 수신자 재시도를 시작하지 못했습니다.' }, 500);

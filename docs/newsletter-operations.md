@@ -95,7 +95,7 @@ npm run db:init:local
 
 For a fresh production database, an authorized operator may apply `schema.sql`
 once using the remote D1 target, then verify its table list. Do not subsequently
-apply migrations `0002` through `0005` to that fresh snapshot, because their
+apply migrations `0002` through `0006` to that fresh snapshot, because their
 schema changes are already included.
 
 For the real pre-newsletter AILIT database, first prove the precondition: its
@@ -109,12 +109,14 @@ npx wrangler d1 execute ailit-db --remote --file=migrations/0002_newsletter_deli
 npx wrangler d1 execute ailit-db --remote --file=migrations/0003_newsletter_retry_source.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0004_newsletter_webhook_events.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0005_newsletter_provider_operations.sql
+npx wrangler d1 execute ailit-db --remote --file=migrations/0006_newsletter_provider_operation_outcome.sql
 ```
 
 `0001` creates the complete pre-outbox newsletter baseline; it intentionally
 does not create the delivery queue columns added by `0002`, the retry source
-added by `0003`, webhook events added by `0004`, or provider-operation and
-delivery-certainty fields added by `0005`. `0002`, `0003`, and `0005` use
+added by `0003`, webhook events added by `0004`, provider-operation and
+delivery-certainty fields added by `0005`, or terminal-operation outcome fields
+added by `0006`. `0002`, `0003`, `0005`, and `0006` use
 non-repeatable `ALTER TABLE`: never reapply them. A partially migrated database
 is a stop condition—compare `PRAGMA table_info(newsletter_deliveries)`,
 `PRAGMA table_info(newsletter_sends)`, and the provider-operation table with
@@ -182,6 +184,12 @@ operation: its ordered delivery IDs, exact Resend Batch request bytes, and
 provider idempotency key are persisted before first submission. Queue
 redelivery reuses those bytes and key, so a mutable configuration or subscriber
 change cannot create a second physical message.
+
+The editor/API also enforce a conservative UTF-8 block-document byte limit.
+This is a delivery-storage limit, not an invitation to split arbitrary large
+content: it ensures a valid 100-recipient claim can be frozen in one D1 value.
+An oversized draft is rejected before it can lock the newsletter; reduce the
+copy or split it into separate newsletters.
 
 If `ailit-newsletter-dead-letter` receives a message, preserve the message
 metadata and correlate `sendId`/delivery IDs with D1. If no provider operation
@@ -266,7 +274,7 @@ delivery, and webhook data is limited to authorized administrators.
 
 Purge confirmation challenges and confirmation-delivery state after 30 days;
 purge delivery error details and webhook event payload metadata after 90 days;
-purge settled accepted provider-operation payloads after 30 days, but retain an
+purge settled accepted or definitively rejected provider-operation payloads after 30 days, but retain an
 operation with pending or indeterminate delivery evidence until authorized
 provider reconciliation resolves it. Provider-operation rows contain rendered
 mail and recipient addresses and are server-only: never export them to browser

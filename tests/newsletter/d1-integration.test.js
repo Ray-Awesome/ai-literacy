@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createHmac } from 'node:crypto';
 import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { onRequestPost } from '../../functions/api/newsletter/webhook.js';
+import { renderNewsletter, validateBlocks } from '../../lib/newsletter/content.js';
 
 const WEBHOOK_SECRET = `whsec_${Buffer.alloc(32, 11).toString('base64')}`;
 
@@ -11,7 +12,7 @@ async function webhookDatabase() {
   const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: 'export default { fetch() { return new Response("ok"); } }', d1Databases: ['DB'] }));
   const db = await mf.getD1Database('DB');
   await db.exec('CREATE TABLE users (id INTEGER PRIMARY KEY); CREATE TABLE answers (id INTEGER PRIMARY KEY, user_id INTEGER); INSERT INTO users (id) VALUES (1);');
-  for (const path of ['../../migrations/0001_newsletter_baseline.sql', '../../migrations/0002_newsletter_delivery_outbox.sql', '../../migrations/0003_newsletter_retry_source.sql', '../../migrations/0004_newsletter_webhook_events.sql']) {
+  for (const path of ['../../migrations/0001_newsletter_baseline.sql', '../../migrations/0002_newsletter_delivery_outbox.sql', '../../migrations/0003_newsletter_retry_source.sql', '../../migrations/0004_newsletter_webhook_events.sql', '../../migrations/0005_newsletter_provider_operations.sql', '../../migrations/0006_newsletter_provider_operation_outcome.sql']) {
     await db.exec((await readFile(new URL(path, import.meta.url), 'utf8')).replace(/^--.*$/gm, '').replace(/\n/g, ' '));
   }
   return { db, dispose: () => mf.dispose() };
@@ -141,7 +142,7 @@ test('local D1 retry lineage excludes subscribers reserved or sent by a differen
   try {
     const db = await mf.getD1Database('DB');
     await db.exec('CREATE TABLE users (id INTEGER PRIMARY KEY); CREATE TABLE answers (id INTEGER PRIMARY KEY, user_id INTEGER);');
-    for (const path of ['../../migrations/0001_newsletter_baseline.sql', '../../migrations/0002_newsletter_delivery_outbox.sql', '../../migrations/0003_newsletter_retry_source.sql', '../../migrations/0004_newsletter_webhook_events.sql', '../../migrations/0005_newsletter_provider_operations.sql']) {
+    for (const path of ['../../migrations/0001_newsletter_baseline.sql', '../../migrations/0002_newsletter_delivery_outbox.sql', '../../migrations/0003_newsletter_retry_source.sql', '../../migrations/0004_newsletter_webhook_events.sql', '../../migrations/0005_newsletter_provider_operations.sql', '../../migrations/0006_newsletter_provider_operation_outcome.sql']) {
       await db.exec((await readFile(new URL(path, import.meta.url), 'utf8')).replace(/^--.*$/gm, '').replace(/\n/g, ' '));
     }
     await db.exec(`INSERT INTO users (id) VALUES (1);
@@ -177,5 +178,22 @@ test('local D1 retry lineage excludes subscribers reserved or sent by a differen
     await Promise.all([reserveRetry(4, 'retry-three'), reserveRetry(5, 'retry-four')]);
     const reservations = await db.prepare('SELECT send_id FROM newsletter_deliveries WHERE send_id IN (4, 5) ORDER BY send_id').all();
     assert.equal(reservations.results.length, 1);
+  } finally { await mf.dispose(); }
+});
+
+test('local D1 rejects an oversized six-paragraph draft before a 100-recipient operation and stores bounded Korean content', async () => {
+  const tooLarge = Array.from({ length: 6 }, (_, index) => ({ id: `large-${index}`, type: 'paragraph', data: { text: '가'.repeat(10_000) } }));
+  assert.equal(validateBlocks(tooLarge).ok, false);
+  const blocks = [{ id: 'korean', type: 'paragraph', data: { text: '가'.repeat(200) } }];
+  assert.equal(validateBlocks(blocks).ok, true);
+  const rendered = renderNewsletter({ subject: '제목', previewText: '미리보기', blocks, unsubscribeUrl: 'https://site.test/api/newsletter/unsubscribe?token=test' });
+  const body = JSON.stringify(Array.from({ length: 100 }, (_, index) => ({ from: 'AILIT <newsletter@site.test>', to: [`reader-${index}@example.test`], subject: '제목', html: rendered.html, text: rendered.text })));
+  assert.ok(new TextEncoder().encode(body).byteLength < 2_000_000);
+  const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: 'export default { fetch() { return new Response("ok"); } }', d1Databases: ['DB'] }));
+  try {
+    const db = await mf.getD1Database('DB');
+    await db.exec("CREATE TABLE newsletter_sends (id INTEGER PRIMARY KEY); CREATE TABLE newsletter_provider_operations (operation_key TEXT PRIMARY KEY, send_id INTEGER NOT NULL REFERENCES newsletter_sends(id), request_body TEXT NOT NULL); INSERT INTO newsletter_sends VALUES (1);");
+    await db.prepare('INSERT INTO newsletter_provider_operations (operation_key, send_id, request_body) VALUES (?, 1, ?)').bind('capacity-korean', body).run();
+    assert.equal((await db.prepare('SELECT length(request_body) AS bytes FROM newsletter_provider_operations').first()).bytes, body.length);
   } finally { await mf.dispose(); }
 });

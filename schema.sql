@@ -129,8 +129,10 @@ CREATE TABLE IF NOT EXISTS newsletter_provider_operations (
   provider_key       TEXT NOT NULL,
   provider_result    TEXT,
   status             TEXT NOT NULL DEFAULT 'created' CHECK(status IN ('created','accepted')),
+  outcome            TEXT NOT NULL DEFAULT 'pending' CHECK(outcome IN ('pending','accepted','rejected')),
   created_at         TEXT NOT NULL DEFAULT (datetime('now')),
   accepted_at        TEXT,
+  settled_at         TEXT,
   expires_at         TEXT NOT NULL,
   FOREIGN KEY (send_id) REFERENCES newsletter_sends(id)
 );

@@ -66,3 +66,10 @@ test('production-safe validation rejects HTTP images without ambient runtime sta
     requireHttpsImages: false,
   }));
 });
+
+test('validation rejects a block document whose UTF-8 bytes cannot fit a durable 100-recipient operation', () => {
+  const oversized = Array.from({ length: 6 }, (_, index) => ({ id: `copy-${index}`, type: 'paragraph', data: { text: '가'.repeat(10_000) } }));
+  const result = validateBlocks(oversized);
+  assert.equal(result.ok, false);
+  assert.match(result.errors.join(' '), /용량/);
+});

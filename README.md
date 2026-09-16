@@ -65,5 +65,5 @@ tests, monitoring, recovery, privacy, and rollback instructions are in
 particular, verify a dedicated Resend sending domain and disable domain-level
 open and click tracking before authorizing any real message. Existing D1
 databases must follow the ordered migration ledger through
-`0005_newsletter_provider_operations.sql`; see the provider-reconciliation
+`0006_newsletter_provider_operation_outcome.sql`; see the provider-reconciliation
 runbook before handling an indeterminate delivery.

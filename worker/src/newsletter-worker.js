@@ -85,8 +85,16 @@ async function createOperation(env, operation, message, config, newsletter) {
     await env.DB.prepare(`INSERT INTO newsletter_provider_operations
       (operation_key, send_id, queue_claim_key, delivery_ids_json, request_body, provider_key, expires_at)
       VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+30 days'))`).bind(operation, message.sendId, message.queueClaimKey || null, JSON.stringify(ids), body, providerKey).run();
-  } catch {
-    // A concurrent queue consumer owns the same durable operation; read it below.
+  } catch (error) {
+    // Only a durable, matching operation proves that another consumer won the
+    // insert race. A storage outage must leave the queue message retryable.
+    const existing = await findOperation(env, operation);
+    if (!existing || existing.send_id !== message.sendId) throw error;
+    try {
+      const ids = JSON.parse(existing.delivery_ids_json);
+      if (!Array.isArray(ids) || !ids.length || ids.length > MAX_BATCH_SIZE || ids.some((id) => !message.deliveryIds.includes(id)) || typeof existing.request_body !== 'string' || !existing.request_body || typeof existing.provider_key !== 'string' || !existing.provider_key) throw error;
+    } catch { throw error; }
+    return existing;
   }
   return findOperation(env, operation);
 }
@@ -96,7 +104,7 @@ async function cleanupOperations(env) {
   // provider acceptance. Completed, fully-recorded deliveries retain their
   // ordinary audit rows after this bounded payload retention window.
   await env.DB.prepare(`DELETE FROM newsletter_provider_operations AS operation
-    WHERE expires_at <= datetime('now') AND status = 'accepted'
+    WHERE expires_at <= datetime('now') AND outcome IN ('accepted', 'rejected')
       AND NOT EXISTS (SELECT 1 FROM newsletter_deliveries AS delivery
         WHERE delivery.send_id = operation.send_id
           AND (delivery.status = 'pending' OR delivery.delivery_certainty = 'indeterminate'))`).bind().run();
@@ -171,11 +179,13 @@ export async function processMessage(body, env) {
     result = operation.status === 'accepted' && operation.provider_result ? JSON.parse(operation.provider_result) : await requestResend(env, operation.request_body, operation.provider_key, messages.length);
   } catch (error) {
     if (!([400, 422].includes(error?.status) && PERMANENT_RESEND_CODES.has(error.code))) throw error;
+    await env.DB.prepare(`UPDATE newsletter_provider_operations SET outcome = 'rejected', provider_result = ?, settled_at = datetime('now') WHERE operation_key = ?`)
+      .bind(JSON.stringify({ code: error.code }), operation.operation_key).run();
     await markResult(env, message.sendId, deliveries, { code: error.code, message: 'Email provider rejected this delivery' }, true);
     await recomputeSend(env, message.sendId); return;
   }
   if (operation.status !== 'accepted') {
-    await env.DB.prepare(`UPDATE newsletter_provider_operations SET status = 'accepted', provider_result = ?, accepted_at = datetime('now') WHERE operation_key = ?`)
+    await env.DB.prepare(`UPDATE newsletter_provider_operations SET status = 'accepted', outcome = 'accepted', provider_result = ?, accepted_at = datetime('now'), settled_at = datetime('now') WHERE operation_key = ?`)
       .bind(JSON.stringify(result), operation.operation_key).run();
   }
   await markResult(env, message.sendId, deliveries, result, false);

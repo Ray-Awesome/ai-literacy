@@ -6,7 +6,7 @@ test('newsletter queue worker exposes a queue consumer', () => {
   assert.equal(typeof worker.queue, 'function');
 });
 
-function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false, failOperationResult = false } = {}) {
+function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'resend-1' }, { id: 'resend-2' }] }), { status: 200 }), failMarkSent = false, failOperationResult = false, failOperationInsert = false } = {}) {
   const rows = {
     newsletter: {
       id: 8, subject: '안전한 제목', preview_text: '미리보기',
@@ -24,6 +24,7 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
     if (sql.includes('DELETE FROM newsletter_provider_operations')) return null;
     if (sql.includes('SELECT operation_key, send_id, delivery_ids_json')) return rows.operations.find((operation) => operation.operation_key === params[0]) || null;
     if (sql.includes('INSERT INTO newsletter_provider_operations')) {
+      if (failOperationInsert) throw new Error('D1 operation insert failed');
       const [operation_key, send_id, queue_claim_key, delivery_ids_json, request_body, provider_key] = params;
       if (rows.operations.some((operation) => operation.operation_key === operation_key)) throw new Error('unique');
       rows.operations.push({ operation_key, send_id, queue_claim_key, delivery_ids_json, request_body, provider_key, status: 'created', provider_result: null });
@@ -38,6 +39,11 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
       if (failOperationResult) { failOperationResult = false; throw new Error('D1 operation result write failed'); }
       const operation = rows.operations.find((item) => item.operation_key === params[1]);
       if (operation) Object.assign(operation, { status: 'accepted', provider_result: params[0] });
+      return null;
+    }
+    if (sql.includes("UPDATE newsletter_provider_operations SET outcome = 'rejected'")) {
+      const operation = rows.operations.find((item) => item.operation_key === params[1]);
+      if (operation) Object.assign(operation, { outcome: 'rejected', provider_result: params[0] });
       return null;
     }
     if (sql.includes('SELECT send.id AS send_id')) return { ...rows.newsletter, send_id: 3, newsletter_id: 8 };
@@ -150,6 +156,7 @@ test('worker records permanent provider failures but throws transient failures f
     globalThis.fetch = originalFetch;
   }
   assert.equal(permanent.rows.deliveries.every((delivery) => delivery.status === 'failed'), true);
+  assert.equal(permanent.rows.operations[0].outcome, 'rejected');
   assert.equal(permanent.rows.send.status, 'failed');
 
   const transient = workerEnv({ response: new Response('{}', { status: 503 }) });
@@ -160,6 +167,19 @@ test('worker records permanent provider failures but throws transient failures f
     globalThis.fetch = originalFetch;
   }
   assert.equal(transient.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
+});
+
+test('worker propagates a failed durable-operation insert when no matching operation can be reread', async () => {
+  const { env, rows } = workerEnv({ failOperationInsert: true });
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+  globalThis.fetch = async () => { calls += 1; return new Response('{}'); };
+  try {
+    await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, env), /D1 operation insert failed/);
+  } finally { globalThis.fetch = originalFetch; }
+  assert.equal(calls, 0);
+  assert.equal(rows.operations.length, 0);
+  assert.equal(rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
 });
 
 test('worker rejects oversized queue messages before contacting Resend', async () => {

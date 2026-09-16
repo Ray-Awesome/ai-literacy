@@ -7,7 +7,7 @@ UPDATE newsletter_deliveries SET error_code = NULL, error_message = NULL WHERE u
 -- operations after 30 days; retain pending or indeterminate evidence for an
 -- authorized provider reconciliation before allowing its parent send to age out.
 DELETE FROM newsletter_provider_operations
-WHERE expires_at <= datetime('now') AND status = 'accepted'
+WHERE expires_at <= datetime('now') AND outcome IN ('accepted', 'rejected')
   AND NOT EXISTS (
     SELECT 1 FROM newsletter_deliveries AS delivery
     WHERE delivery.send_id = newsletter_provider_operations.send_id
