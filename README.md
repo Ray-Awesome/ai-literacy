@@ -13,18 +13,22 @@ rate limits, and accept signed Resend webhooks. Administrator Functions extend
 to create a send, and enqueue no more than 100 delivery IDs per message.
 
 The `ailit-newsletter-delivery` Worker consumes
-`ailit-newsletter-send`, renders the frozen newsletter content, calls Resend's
-batch API, and updates each delivery and aggregate send state in the same D1
-database. After its retry limit, a message is delivered to
-`ailit-newsletter-dead-letter`; that consumer marks remaining deliveries as
-failed and recomputes the send. Webhook events are signature-checked,
-replay-limited, and de-duplicated before permanent bounces and complaints
-suppress later delivery.
+`ailit-newsletter-send`, freezes a durable provider operation (ordered delivery
+IDs, exact Batch request bytes, and a provider idempotency key) before its
+first Resend submission, and updates each delivery and aggregate send state in
+the same D1 database. The frozen operation is server-only because it contains
+recipient addresses and rendered content. After its retry limit, a message is
+delivered to `ailit-newsletter-dead-letter`; an operation that might have been
+accepted is marked indeterminate and must be reconciled with authorized
+provider evidence before a new send is allowed. Webhook events are
+signature-checked, replay-limited, and de-duplicated before permanent bounces
+and complaints suppress later delivery.
 
-No browser bundle contains delivery credentials. The service stores only the
-email address required for subscription; confirmation tokens are stored as
-hashes, and unsubscribe URLs contain signed tokens rather than raw addresses.
-Open pixels and click-tracking redirects are deliberately not used.
+No browser bundle contains delivery credentials or frozen provider-operation
+payloads. The service stores only the email address required for subscription;
+confirmation tokens are stored as hashes, and unsubscribe URLs contain signed
+tokens rather than raw addresses. Open pixels and click-tracking redirects are
+deliberately not used.
 
 ## Local development
 
@@ -59,4 +63,7 @@ The complete environment inventory, migration order, provider setup, smoke
 tests, monitoring, recovery, privacy, and rollback instructions are in
 [`docs/newsletter-operations.md`](docs/newsletter-operations.md). In
 particular, verify a dedicated Resend sending domain and disable domain-level
-open and click tracking before authorizing any real message.
+open and click tracking before authorizing any real message. Existing D1
+databases must follow the ordered migration ledger through
+`0005_newsletter_provider_operations.sql`; see the provider-reconciliation
+runbook before handling an indeterminate delivery.

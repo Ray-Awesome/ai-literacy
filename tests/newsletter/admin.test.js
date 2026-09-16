@@ -163,6 +163,25 @@ test('subscriber and send listings validate pagination and do not expose secret 
   assert.equal((await listSends(invalidDeliveryCtx)).status, 400);
 });
 
+test('send listing distinguishes retryable known failures from indeterminate delivery outcomes', async () => {
+  const ctx = await makeAdminContext({
+    path: '/api/admin/newsletter-sends?limit=10&offset=0',
+    sends: [{
+      id: 41, newsletter_id: 12, subject: '발송', status: 'partial', target_count: 3, success_count: 1, failure_count: 2,
+      retryable_failure_count: 1, indeterminate_count: 1, started_at: '2026-09-16', completed_at: '2026-09-16',
+    }],
+  });
+  const response = await listSends(ctx);
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.sends[0].retryableFailureCount, 1);
+  assert.deepEqual(body.sends[0].indeterminateCount, 1);
+  const query = ctx.queries.find(({ sql }) => sql.includes('FROM newsletter_sends'))?.sql || '';
+  assert.match(query, /delivery_certainty/);
+  assert.match(query, /retryable_failure_count/);
+  assert.doesNotMatch(query, /request_body|provider_key|provider_result/);
+});
+
 test('subscriber summary returns the current active recipient count for send confirmation', async () => {
   const ctx = await makeAdminContext({ path: '/api/admin/newsletter-subscribers?summary=active', activeSubscriberCount: 37 });
   const response = await listSubscribers(ctx);
@@ -197,6 +216,7 @@ test('admin page keeps member and answer panels while loading the accessible edi
   assert.match(script, /newsletter-subscribers\?summary=active/);
   assert.match(script, /\/api\/admin\/newsletters\/.*\/send/);
   assert.match(script, /\/api\/admin\/newsletters\/.*\/retry/);
+  assert.match(script, /retryableFailureCount/);
   assert.match(script, /Idempotency-Key/);
   assert.match(script, /function loadNewsletters\(offset\)/);
 });

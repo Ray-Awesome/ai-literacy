@@ -11,6 +11,8 @@ function publicSend(row) {
     targetCount: row.target_count,
     successCount: row.success_count,
     failureCount: row.failure_count,
+    retryableFailureCount: row.retryable_failure_count,
+    indeterminateCount: row.indeterminate_count,
     startedAt: row.started_at,
     completedAt: row.completed_at,
   };
@@ -56,8 +58,12 @@ export async function onRequestGet({ request, env }) {
       return json({ deliveries: (rows.results || []).map(publicDelivery), sendId, ...page });
     }
     const rows = await env.DB.prepare(`
-      SELECT s.id, s.newsletter_id, n.subject, s.status, s.target_count, s.success_count, s.failure_count, s.started_at, s.completed_at
+      SELECT s.id, s.newsletter_id, n.subject, s.status, s.target_count, s.success_count, s.failure_count, s.started_at, s.completed_at,
+        COALESCE(SUM(CASE WHEN d.status = 'failed' AND d.delivery_certainty = 'known' THEN 1 ELSE 0 END), 0) AS retryable_failure_count,
+        COALESCE(SUM(CASE WHEN d.delivery_certainty = 'indeterminate' THEN 1 ELSE 0 END), 0) AS indeterminate_count
       FROM newsletter_sends s JOIN newsletters n ON n.id = s.newsletter_id
+      LEFT JOIN newsletter_deliveries d ON d.send_id = s.id
+      GROUP BY s.id
       ORDER BY s.started_at DESC, s.id DESC LIMIT ? OFFSET ?
     `).bind(page.limit, page.offset).all();
     return json({ sends: (rows.results || []).map(publicSend), ...page });

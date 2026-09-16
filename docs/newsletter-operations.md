@@ -85,7 +85,8 @@ npx wrangler secret put SESSION_SECRET --config worker/wrangler.toml
 
 The checked-in `schema.sql` is the current snapshot for a **fresh** database.
 It includes the delivery outbox fields, retry source, webhook-events table,
-confirmation challenge tables, confirmation delivery state, and rate limits.
+provider-operation records, confirmation challenge tables, confirmation
+delivery state, and rate limits.
 For a fresh local database, run:
 
 ```bash
@@ -94,7 +95,7 @@ npm run db:init:local
 
 For a fresh production database, an authorized operator may apply `schema.sql`
 once using the remote D1 target, then verify its table list. Do not subsequently
-apply migrations `0002` through `0004` to that fresh snapshot, because their
+apply migrations `0002` through `0005` to that fresh snapshot, because their
 schema changes are already included.
 
 For the real pre-newsletter AILIT database, first prove the precondition: its
@@ -107,16 +108,18 @@ npx wrangler d1 execute ailit-db --remote --file=migrations/0001_newsletter_base
 npx wrangler d1 execute ailit-db --remote --file=migrations/0002_newsletter_delivery_outbox.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0003_newsletter_retry_source.sql
 npx wrangler d1 execute ailit-db --remote --file=migrations/0004_newsletter_webhook_events.sql
+npx wrangler d1 execute ailit-db --remote --file=migrations/0005_newsletter_provider_operations.sql
 ```
 
 `0001` creates the complete pre-outbox newsletter baseline; it intentionally
 does not create the delivery queue columns added by `0002`, the retry source
-added by `0003`, or webhook events added by `0004`. `0002` and `0003` use
+added by `0003`, webhook events added by `0004`, or provider-operation and
+delivery-certainty fields added by `0005`. `0002`, `0003`, and `0005` use
 non-repeatable `ALTER TABLE`: never reapply them. A partially migrated database
-is a stop condition—compare `PRAGMA table_info(newsletter_deliveries)` and
-`PRAGMA table_info(newsletter_sends)` with the migration ledger and obtain a
-recovery plan rather than guessing. These are remote mutations and are
-intentionally not part of local verification.
+is a stop condition—compare `PRAGMA table_info(newsletter_deliveries)`,
+`PRAGMA table_info(newsletter_sends)`, and the provider-operation table with
+the migration ledger and obtain a recovery plan rather than guessing. These are
+remote mutations and are intentionally not part of local verification.
 Record the change ticket, database backup/export location, timestamp, operator,
 and each command's output. Do not use `db:init:remote` against an existing
 production database: it is a bootstrap convenience, not a migration ledger.
@@ -132,6 +135,7 @@ newsletter_sends
 newsletter_deliveries
 newsletter_rate_limits
 newsletter_webhook_events
+newsletter_provider_operations
 ```
 
 The first six include the core subscriber, confirmation, content, send, and
@@ -164,22 +168,31 @@ D1 errors, Resend API failures, webhook 4xx/5xx, and per-send counts in
 | Expected state | Interpretation and response |
 | --- | --- |
 | `completed` | Every delivery was marked `sent`. Retain the send record. |
-| `partial` | Some deliveries failed; use the editor's failed-recipient retry action after the cause is understood. |
-| `failed` | No eligible delivery succeeded or queueing failed; inspect errors, bindings, and provider state before retrying. |
+| `partial` | Some deliveries failed; use the editor's failed-recipient retry action only when `retryableFailureCount` is nonzero and the cause is understood. |
+| `failed` | No eligible delivery succeeded or queueing failed; inspect errors, bindings, and provider state before retrying. A nonzero `indeterminateCount` requires provider reconciliation, not normal retry. |
 | `sending` / `queued` for more than 15 minutes | Page the on-call editor and investigate queue backlog, Worker deployment/logs, D1 connectivity, and claimed/queued rows. |
 
 The initial-send and retry routes require an `Idempotency-Key`; reuse the same
 key only to resume the same request, never for another newsletter. Recipient
-rows are unique by `(send_id, subscriber_id)`, and a retry clones only failed,
-still-active recipients; already sent recipients are excluded. Queue claim keys
-and Resend batch idempotency keys make an at-least-once queue delivery safe.
+rows are unique by `(send_id, subscriber_id)`, and a retry clones only known
+failed, still-active recipients that are not already pending or sent by another
+send in the same newsletter lineage. Indeterminate deliveries are never normal
+failed-recipient retry candidates. Queue claim keys identify a durable provider
+operation: its ordered delivery IDs, exact Resend Batch request bytes, and
+provider idempotency key are persisted before first submission. Queue
+redelivery reuses those bytes and key, so a mutable configuration or subscriber
+change cannot create a second physical message.
 
 If `ailit-newsletter-dead-letter` receives a message, preserve the message
-metadata and correlate `sendId`/delivery IDs with D1. Its consumer marks still
-pending deliveries `failed` with `queue_retries_exhausted` and recomputes the
-send. Fix the underlying Worker, binding, or provider fault first; then use the
-administrator retry endpoint for failed recipients. Do not manually replay a
-DLQ message until duplicate-safe state and the source send have been checked.
+metadata and correlate `sendId`/delivery IDs with D1. If no provider operation
+exists, its consumer marks still-pending deliveries `failed` with
+`queue_retries_exhausted`. If an operation exists, it marks them
+`indeterminate`, retains the original operation/key, and recomputes the send;
+this is not safely retryable. Do not manually replay a DLQ message or use
+failed-recipient retry for an indeterminate delivery. Use the authorized
+[provider reconciliation runbook](newsletter-provider-reconciliation.md): query
+Resend with the stored key, then record proven delivery or proven non-delivery
+before creating any new provider key.
 
 The on-call owner is the designated **newsletter editor**; the technical owner
 is the Cloudflare service maintainer. At least every 15 minutes during an active
@@ -253,6 +266,12 @@ delivery, and webhook data is limited to authorized administrators.
 
 Purge confirmation challenges and confirmation-delivery state after 30 days;
 purge delivery error details and webhook event payload metadata after 90 days;
+purge settled accepted provider-operation payloads after 30 days, but retain an
+operation with pending or indeterminate delivery evidence until authorized
+provider reconciliation resolves it. Provider-operation rows contain rendered
+mail and recipient addresses and are server-only: never export them to browser
+responses or logs. Retain the original operation/key while reconciliation is
+pending; only provider evidence of non-delivery permits a new provider key.
 retain immutable newsletter content, send aggregates, recipient-target history,
 and provider delivery IDs for 24 months after a terminal send. After 24 months,
 purge terminal send/delivery rows and an old sent/failed newsletter with no
