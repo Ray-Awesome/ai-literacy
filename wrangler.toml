@@ -14,6 +14,8 @@ queue = "ailit-newsletter-send"
 
 [vars]
 ADMIN_EMAIL = ""
+NEWSLETTER_FROM = "AILIT <newsletter@news.ailiteracy.or.kr>"
+PUBLIC_SITE_URL = "https://ailiteracy.or.kr"
 
 [observability]
 enabled = true

@@ -1,11 +1,12 @@
 import { json } from '../../../lib/auth.js';
-import { publicSiteUrl } from '../../../lib/newsletter/config.js';
+import { newsletterTokenSecret, publicSiteUrl } from '../../../lib/newsletter/config.js';
 import { verifyActionToken } from '../../../lib/newsletter/tokens.js';
 
 async function unsubscribe(request, env) {
   const token = new URL(request.url).searchParams.get('token');
-  if (!token || !env?.SESSION_SECRET) return 'invalid';
-  const action = await verifyActionToken(token, 'unsubscribe', env.SESSION_SECRET);
+  const secret = newsletterTokenSecret(env);
+  if (!token || !secret) return 'invalid';
+  const action = await verifyActionToken(token, 'unsubscribe', secret);
   if (!action || !Number.isInteger(action.sid)) return 'invalid';
   try {
     await env.DB.prepare(`

@@ -22,6 +22,7 @@ export function makeEnv() {
     PUBLIC_SITE_URL: 'https://site.test',
     RESEND_API_KEY: 're_test_key',
     SESSION_SECRET: 'test-secret-at-least-32-characters',
+    NEWSLETTER_TOKEN_SECRET: 'newsletter-secret-at-least-32-characters',
     rows,
     sentEmails: [],
     rateLimits: db.rateLimits,
@@ -54,6 +55,6 @@ export function makeEnv() {
   };
   env.unsubscribeToken = (subscriber) => signActionToken({
     sid: subscriber.id, purpose: 'unsubscribe', exp: Math.floor(Date.now() / 1000) + 3600,
-  }, env.SESSION_SECRET);
+  }, env.NEWSLETTER_TOKEN_SECRET);
   return env;
 }

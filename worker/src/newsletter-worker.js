@@ -1,4 +1,5 @@
 import { renderNewsletter } from '../../lib/newsletter/content.js';
+import { newsletterTokenSecret } from '../../lib/newsletter/config.js';
 import { sha256, signActionToken } from '../../lib/newsletter/tokens.js';
 
 const MAX_BATCH_SIZE = 100;
@@ -15,12 +16,14 @@ function validMessage(body) {
 }
 
 function workerConfig(env) {
-  for (const key of ['SESSION_SECRET', 'NEWSLETTER_FROM', 'PUBLIC_SITE_URL', 'RESEND_API_KEY']) {
+  for (const key of ['NEWSLETTER_FROM', 'PUBLIC_SITE_URL', 'RESEND_API_KEY']) {
     if (typeof env?.[key] !== 'string' || !env[key].trim()) throw new Error(`Missing ${key}`);
   }
+  const tokenSecret = newsletterTokenSecret(env);
+  if (!tokenSecret.trim()) throw new Error('Missing NEWSLETTER_TOKEN_SECRET');
   const url = new URL(env.PUBLIC_SITE_URL);
   if (url.protocol !== 'https:') throw new Error('PUBLIC_SITE_URL must use HTTPS');
-  return { siteUrl: url.toString().replace(/\/$/, '') };
+  return { siteUrl: url.toString().replace(/\/$/, ''), tokenSecret };
 }
 
 async function frozenNewsletter(env, sendId) {
@@ -43,7 +46,7 @@ async function buildMessages(env, config, newsletter, deliveries) {
   let blocks;
   try { blocks = JSON.parse(newsletter.content_json); } catch { throw Object.assign(new Error('Invalid frozen newsletter content'), { permanentContent: true }); }
   return Promise.all(deliveries.map(async (delivery) => {
-    const token = await signActionToken({ sid: delivery.subscriber_id, purpose: 'unsubscribe', exp: STABLE_UNSUBSCRIBE_EXPIRY }, env.SESSION_SECRET);
+    const token = await signActionToken({ sid: delivery.subscriber_id, purpose: 'unsubscribe', exp: STABLE_UNSUBSCRIBE_EXPIRY }, config.tokenSecret);
     const unsubscribeUrl = `${config.siteUrl}/api/newsletter/unsubscribe?token=${encodeURIComponent(token)}`;
     let rendered;
     try { rendered = renderNewsletter({ subject: newsletter.subject, previewText: newsletter.preview_text, blocks, unsubscribeUrl, requireHttpsImages: true }); } catch {

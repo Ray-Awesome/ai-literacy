@@ -1,3 +1,4 @@
 # Set a unique local value. Never commit the real .dev.vars file.
 SESSION_SECRET=replace-with-a-long-random-secret
+NEWSLETTER_TOKEN_SECRET=replace-with-a-separate-long-random-secret
 RESEND_WEBHOOK_SECRET=whsec_replace-with-the-base64-signing-secret

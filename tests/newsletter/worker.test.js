@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker, { processMessage } from '../../worker/src/newsletter-worker.js';
+import { verifyActionToken } from '../../lib/newsletter/tokens.js';
 
 test('newsletter queue worker exposes a queue consumer', () => {
   assert.equal(typeof worker.queue, 'function');
@@ -126,6 +127,7 @@ function workerEnv({ response = new Response(JSON.stringify({ data: [{ id: 'rese
   };
   return { env: {
     DB, rows, SESSION_SECRET: 'test-secret-at-least-32-characters', NEWSLETTER_FROM: 'AILIT <newsletter@site.test>',
+    NEWSLETTER_TOKEN_SECRET: 'newsletter-secret-at-least-32-characters',
     PUBLIC_SITE_URL: 'https://site.test', RESEND_API_KEY: 're_test_key', response,
   }, rows };
 }
@@ -149,6 +151,9 @@ test('worker sends a bounded batch with individual HTTPS unsubscribe URLs and re
   assert.equal(payload.every((message) => !Object.hasOwn(message, 'tracking')), true);
   assert.match(requestHeaders['Idempotency-Key'], /^newsletter-3-[a-f0-9]{64}$/);
   assert.match(payload[0].headers['List-Unsubscribe'], /^<https:\/\/site\.test\/api\/newsletter\/unsubscribe\?token=/);
+  const unsubscribeToken = new URL(payload[0].headers['List-Unsubscribe'].slice(1, -1)).searchParams.get('token');
+  assert.equal((await verifyActionToken(unsubscribeToken, 'unsubscribe', env.NEWSLETTER_TOKEN_SECRET)).sid, 11);
+  assert.equal(await verifyActionToken(unsubscribeToken, 'unsubscribe', env.SESSION_SECRET), null);
   assert.notEqual(payload[0].headers['List-Unsubscribe'], payload[1].headers['List-Unsubscribe']);
   assert.equal(payload[0].headers['List-Unsubscribe-Post'], 'List-Unsubscribe=One-Click');
   assert.deepEqual(rows.deliveries.map((delivery) => [delivery.status, delivery.resend_message_id]), [['sent', 'resend-1'], ['sent', 'resend-2']]);
@@ -274,8 +279,9 @@ test('concurrent Resend idempotency and missing worker configuration remain retr
   } finally { globalThis.fetch = originalFetch; }
   assert.equal(domain.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
   const missing = workerEnv();
+  delete missing.env.NEWSLETTER_TOKEN_SECRET;
   delete missing.env.SESSION_SECRET;
-  await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, missing.env), /Missing SESSION_SECRET/);
+  await assert.rejects(processMessage({ sendId: 3, deliveryIds: [21, 22] }, missing.env), /Missing NEWSLETTER_TOKEN_SECRET/);
   assert.equal(missing.rows.deliveries.every((delivery) => delivery.status === 'pending'), true);
 });
 

@@ -39,11 +39,12 @@ or logs.
 
 | Runtime | Secrets | Non-secret variables |
 | --- | --- | --- |
-| Pages / Pages Functions | `SESSION_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | `ADMIN_EMAIL`, `NEWSLETTER_FROM`, `PUBLIC_SITE_URL=https://ailiteracy.or.kr` |
-| Delivery Worker | `SESSION_SECRET`, `RESEND_API_KEY` | `NEWSLETTER_FROM`, `PUBLIC_SITE_URL=https://ailiteracy.or.kr` |
+| Pages / Pages Functions | `SESSION_SECRET`, `NEWSLETTER_TOKEN_SECRET`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | `ADMIN_EMAIL`, `NEWSLETTER_FROM`, `PUBLIC_SITE_URL=https://ailiteracy.or.kr` |
+| Delivery Worker | `NEWSLETTER_TOKEN_SECRET`, `RESEND_API_KEY` | `NEWSLETTER_FROM`, `PUBLIC_SITE_URL=https://ailiteracy.or.kr` |
 
-`SESSION_SECRET` must be the same high-entropy value in Pages and Worker so
-action-token signatures remain valid. `RESEND_WEBHOOK_SECRET` belongs only to
+`NEWSLETTER_TOKEN_SECRET` must be the same high-entropy value in Pages and
+Worker so action-token signatures remain valid without rotating login sessions.
+`RESEND_WEBHOOK_SECRET` belongs only to
 Pages because the webhook is a Pages Function. `ADMIN_EMAIL` is only consumed
 by the existing Pages signup/admin flow. `NEWSLETTER_FROM` must be an address
 on the verified Resend sending domain; a dedicated newsletter subdomain is the
@@ -62,10 +63,11 @@ They were intentionally not executed as part of this repository work:
 npx wrangler queues create ailit-newsletter-send
 npx wrangler queues create ailit-newsletter-dead-letter
 npx wrangler pages secret put SESSION_SECRET
+npx wrangler pages secret put NEWSLETTER_TOKEN_SECRET
 npx wrangler pages secret put RESEND_API_KEY
 npx wrangler pages secret put RESEND_WEBHOOK_SECRET
 npx wrangler secret put RESEND_API_KEY --config worker/wrangler.toml
-npx wrangler secret put SESSION_SECRET --config worker/wrangler.toml
+npx wrangler secret put NEWSLETTER_TOKEN_SECRET --config worker/wrangler.toml
 ```
 
 ## Resend provider setup

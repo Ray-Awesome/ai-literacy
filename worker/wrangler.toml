@@ -3,6 +3,10 @@ main = "src/newsletter-worker.js"
 compatibility_date = "2026-09-16"
 compatibility_flags = ["nodejs_compat"]
 
+[vars]
+NEWSLETTER_FROM = "AILIT <newsletter@news.ailiteracy.or.kr>"
+PUBLIC_SITE_URL = "https://ailiteracy.or.kr"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "ailit-db"
